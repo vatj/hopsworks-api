@@ -18,7 +18,7 @@ setup(
     name="hopsworks",
     version=__version__,
     install_requires=[
-        "hsfs @ git+https://git@github.com/vatj/feature-store-api@FSTORE-1185-after-server-fix#egg=hsfs[python]&subdirectory=python",
+        "hsfs @ git+https://git@github.com/vatj/feature-store-api@FSTORE-1185-merged#egg=hsfs[python]&subdirectory=python",
         "hsml @ git+https://git@github.com/logicalclocks/machine-learning-api@main#egg=hsml&subdirectory=python",
         "pyhumps==1.6.1",
         "requests",
