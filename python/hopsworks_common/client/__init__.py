@@ -65,10 +65,11 @@ def get_instance() -> Union[hopsworks.Client, external.Client]:
 
 
 def stop() -> None:
-    global _client
+    global _client, _external
     if _client:
         _client._close()
     _client = None
+    _external = None
     if istio._client:
         istio._client._close()
     istio._client = None
