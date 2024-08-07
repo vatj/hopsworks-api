@@ -45,6 +45,7 @@ _arrow_flight_instance = None
 def get_instance() -> ArrowFlightClient:
     global _arrow_flight_instance
     if not _arrow_flight_instance:
+        _logger.debug("Initializing Hopsworks Feature Query Service Client.")
         _arrow_flight_instance = ArrowFlightClient()
     return _arrow_flight_instance
 
@@ -52,6 +53,7 @@ def get_instance() -> ArrowFlightClient:
 def close() -> None:
     global _arrow_flight_instance
     _arrow_flight_instance = None
+    _logger.debug("Hopsworks Feature Query Service Client closed.")
 
 
 def _disable_feature_query_service_client():

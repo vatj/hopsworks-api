@@ -57,7 +57,6 @@ from botocore.response import StreamingBody
 from hsfs import (
     client,
     feature,
-    feature_store,
     feature_view,
     transformation_function,
     util,
@@ -128,8 +127,8 @@ class Engine:
     def sql(
         self,
         sql_query: str,
-        feature_store: feature_store.FeatureStore,
-        online_conn: Optional["sc.JdbcConnector"],
+        feature_store: str,
+        online_conn: Optional[sc.JdbcConnector],
         dataframe_type: str,
         read_options: Optional[Dict[str, Any]],
         schema: Optional[List["feature.Feature"]] = None,
@@ -182,8 +181,10 @@ class Engine:
                 dataframe_type,
             )
         else:
-            raise ValueError(
-                "Reading data with Hive is not supported when using hopsworks client version >= 4.0"
+            raise FeatureStoreException(
+                "Query is not supported by Hopsworks Feature Querty Service. "
+                "Reading data with Hive is not supported when using hopsworks client version >= 4.0. "
+                "Use a Spark-enabled client to execute your query."
             )
         if schema:
             result_df = Engine.cast_columns(result_df, schema)
@@ -356,7 +357,7 @@ class Engine:
 
     def _read_s3(
         self,
-        storage_connector: "sc.S3Connector",
+        storage_connector: sc.S3Connector,
         location: str,
         data_format: str,
         dataframe_type: str = "default",
@@ -417,7 +418,7 @@ class Engine:
 
     def read_stream(
         self,
-        storage_connector: "sc.StorageConnector",
+        storage_connector: sc.StorageConnector,
         message_format: Any,
         schema: Any,
         options: Optional[Dict[str, Any]],
@@ -430,9 +431,9 @@ class Engine:
     def show(
         self,
         sql_query: str,
-        feature_store: feature_store.FeatureStore,
+        feature_store: str,
         n: int,
-        online_conn: "sc.JdbcConnector",
+        online_conn: sc.JdbcConnector,
         read_options: Optional[Dict[str, Any]] = None,
     ) -> Union[pd.DataFrame, pl.DataFrame]:
         return self.sql(

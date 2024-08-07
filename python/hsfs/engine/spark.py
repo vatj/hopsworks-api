@@ -139,7 +139,7 @@ class Engine:
     def sql(
         self,
         sql_query,
-        feature_store,
+        feature_store: str,
         connector,
         dataframe_type,
         read_options,
@@ -156,12 +156,12 @@ class Engine:
     def is_flyingduck_query_supported(self, query, read_options=None):
         return False  # we do not support flyingduck on pyspark clients
 
-    def _sql_offline(self, sql_query, feature_store):
+    def _sql_offline(self, sql_query, feature_store: str):
         # set feature store
         self._spark_session.sql("USE {}".format(feature_store))
         return self._spark_session.sql(sql_query)
 
-    def show(self, sql_query, feature_store, n, online_conn, read_options=None):
+    def show(self, sql_query, feature_store: str, n, online_conn, read_options=None):
         return self.sql(
             sql_query, feature_store, online_conn, "default", read_options
         ).show(n)

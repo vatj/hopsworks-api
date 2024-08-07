@@ -100,11 +100,16 @@ class Query:
         else:
             online_conn = None
 
-            if engine.get_instance().is_flyingduck_query_supported(self, read_options):
-                sql_query = self._to_string(fs_query, online, asof=True)
-                sql_query = arrow_flight_client.get_instance().create_query_object(
-                    self, sql_query, fs_query.on_demand_fg_aliases
-                )
+            if engine.get_type() == "python":
+                if engine.get_instance().is_flyingduck_query_supported(
+                    self, read_options
+                ):
+                    sql_query = self._to_string(fs_query, online, asof=True)
+                    sql_query = arrow_flight_client.get_instance().create_query_object(
+                        self, sql_query, fs_query.on_demand_fg_aliases
+                    )
+                else:
+                    return "", online_conn
             else:
                 sql_query = self._to_string(fs_query, online)
                 # Register on demand feature groups as temporary tables

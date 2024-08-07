@@ -139,3 +139,7 @@ docs/index.md
 
 # Test artifacts
 keyFile.json
+
+# Dev directories
+dev_scripts/
+dev_tools/
