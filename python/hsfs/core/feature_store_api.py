@@ -35,3 +35,15 @@ class FeatureStoreApi:
         return hsfs.feature_store.FeatureStore.from_response_json(
             _client._send_request("GET", path_params)
         )
+
+    def get_feature_store_summaries(self):
+        """Get summary of a feature store.
+
+        :param feature_store_id: id of the feature store
+        :type feature_store_id: int
+        :return: the feature store summary
+        :rtype: dict
+        """
+        _client = client.get_instance()
+        path_params = ["project", _client._project_id, "featurestores"]
+        return _client._send_request("GET", path_params)

@@ -19,7 +19,9 @@ import importlib.util
 import os
 from typing import Any, Optional
 
+import humps
 from hopsworks_common import client
+from hopsworks_common.helpers import user_messages
 from hsfs import engine, feature_store, usage, util
 from hsfs.core import (
     feature_store_api,
@@ -177,7 +179,15 @@ class Connection:
         """
         if not name:
             name = client.get_instance()._project_name
-        return self._feature_store_api.get(util.append_feature_store_suffix(name))
+        fs = self._feature_store_api.get(util.append_feature_store_suffix(name))
+        summaries = filter(
+            lambda x: x["project_name"] == name,
+            humps.decamelize(self._feature_store_api.get_feature_store_summaries()),
+        )
+        user_messages.print_connected_to_feature_store_message(
+            summary=summaries[0] if summaries else {}
+        )
+        return fs
 
     @not_connected
     def connect(self) -> None:
@@ -252,7 +262,6 @@ class Connection:
         except (TypeError, ConnectionError):
             self._connected = False
             raise
-        print("Connected. Call `.close()` to terminate connection gracefully.")
 
     def close(self) -> None:
         """Close a connection gracefully.

@@ -51,3 +51,6 @@ HAS_POLARS: bool = importlib.util.find_spec("polars") is not None
 # SQL packages
 HAS_SQLALCHEMY: bool = importlib.util.find_spec("sqlalchemy") is not None
 HAS_AIOMYSQL: bool = importlib.util.find_spec("aiomysql") is not None
+
+# Verbose
+HAS_RICH: bool = importlib.util.find_spec("rich") is not None

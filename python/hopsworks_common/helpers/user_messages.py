@@ -15,17 +15,21 @@
 #
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from hopsworks_common import client
+from hopsworks_common import constants
 from hopsworks_common.helpers import verbose
-from rich import box
-from rich.markdown import Markdown
-from rich.panel import Panel
 
 
 if TYPE_CHECKING:
-    from hsfs import feature_store as fs_mod
+    pass
+
+if constants.HAS_RICH:
+    from hopsworks_common.helpers import rich_messages
+    from rich import box
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+    from rich.table import Table
 
 
 def print_connected_to_hopsworks_message(project_name: str, hostname: str):
@@ -33,7 +37,9 @@ def print_connected_to_hopsworks_message(project_name: str, hostname: str):
         rich_console = verbose.get_rich_console()
         rich_console.print(
             Panel.fit(
-                f"Connected to Project [bold red]{project_name}[/bold red] on [italic red]{hostname}[/italic red].",
+                rich_messages.CONNECTED_TO_PROJECT.format(
+                    project_name=project_name, hostname=hostname
+                ),
                 title="Hopsworks",
                 style="bold",
                 box=box.ASCII2,
@@ -41,37 +47,55 @@ def print_connected_to_hopsworks_message(project_name: str, hostname: str):
             ),
         )
     else:
-        print(f"Connected to project {project_name} in Hopsworks.")
+        print(f"Connected to Hopsworks project {project_name} on {hostname}.")
 
 
-def print_connected_to_feature_store_message(fs_obj: fs_mod.FeatureStore):
-    get_started_message = Markdown(
-        "- Call the `getting_started()` method to get an overview of the feature store API and capabilities.\n"
-        "- Call `show_feature_groups()` to show a list of existing Feature Groups to insert/upsert new data or "
-        "set `with_features=True` to see which features you can select to build a new Feature View.\n"
-        "- Call `show_feature_views()` to show a list of existing Feature Views, you can use them to read data "
-        "and create Training Datasets. Feature Views composed of Features from online-enabled FeatureGroups can "
-        "be used to serve feature value for real-time use cases. Checkout the ⚡ "
-        "[benchmarks](https://www.hopsworks.ai/post/feature-store-benchmark-comparison-hopsworks-and-feast)",
-        justify="left",
-        inline_code_lexer="python",
-        inline_code_theme=verbose.get_python_lexer_theme(),
-    )
-
+def print_connected_to_feature_store_message(summary: Optional[Dict[str, Any]] = None):
     if verbose.is_hopsworks_verbose() and verbose.is_rich_print_enabled():
+        summary_table = Table(
+            title="Summary",
+            show_header=False,
+            header_style="bold",
+            box=box.ASCII2,
+            show_lines=True,
+            headers=["", ""],
+        )
+        summary_table.add_row("Feature Groups", summary.get("num_feature_groups", 0))
+        summary_table.add_row("Feature Views", summary.get("num_feature_views", 0))
+        summary_table.add_row(
+            "Training Datasets", summary.get("num_training_datasets", 0)
+        )
+        summary_table.add_row(
+            "Storage Connector", summary.get("num_storage_connectors", 0)
+        )
+        method_message = Markdown(
+            "## Methods"
+            if summary
+            else ""
+            + rich_messages.HAS_GETTING_STARTED_METHOD.format(
+                class_name="Feature Store"
+            )
+            + rich_messages.FEATURE_STORE_SHOW_FEATURE_GROUPS
+            + rich_messages.FEATURE_STORE_SHOW_FEATURE_VIEWS,
+            justify="left",
+            inline_code_lexer="python",
+            inline_code_theme=verbose.get_python_lexer_theme(),
+        )
         rich_console = verbose.get_rich_console()
         (
             rich_console.print(
-                Panel.fit(
-                    f"Connected to Project [bold red]{fs_obj.project_name}[/bold red] on [italic red]{client.get_instance()._host}[/italic red].",
-                    title="Hopsworks Feature Store",
-                    style="bold",
-                    box=box.ASCII2,
-                    padding=(1, 2),
-                ),
-                get_started_message,
+                summary_table,
+                method_message,
                 justify="center",
             ),
         )
     else:
-        print(f"Connected to project {fs_obj.project_name} in Hopsworks Feature Store.")
+        the_string = "Hopsworks Feature Store: " + "\n\t- ".join(
+            [
+                f"Feature Groups : {summary.get('num_feature_groups', 0)}",
+                f"Feature Views : {summary.get('num_feature_views', 0)}",
+                f"Training Datasets : {summary.get('num_training_datasets', 0)}",
+                f"Storage Connector : {summary.get('num_storage_connectors', 0)}",
+            ]
+        )
+        print(the_string)
