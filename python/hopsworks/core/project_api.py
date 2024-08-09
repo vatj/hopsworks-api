@@ -119,3 +119,51 @@ class ProjectApi:
             "client",
         ]
         return _client._send_request("GET", path_params, stream=True)
+
+    def get_feature_store_summaries(self):
+        """Get the summary of the feature store.
+
+        # Returns
+            `Dict[str, Any]`: The summary of the feature store
+        # Raises
+            `RestAPIError`: If unable to get the feature store summary
+        """
+        _client = client.get_instance()
+        path_params = [
+            "project",
+            _client._project_id,
+            "featurestores",
+        ]
+        return _client._send_request("GET", path_params)
+
+    def get_model_registry_summaries(self):
+        """Get the summary of the model registry.
+
+        # Returns
+            `Dict[str, Any]`: The summary of the model registry
+        # Raises
+            `RestAPIError`: If unable to get the model registry summary
+        """
+        _client = client.get_instance()
+        path_params = [
+            "project",
+            _client._project_id,
+            "modelregistries",
+        ]
+        return _client._send_request("GET", path_params)
+
+    def get_deployment_summaries(self):
+        """Get the summary of the deployments.
+
+        # Returns
+            `Dict[str, Any]`: The summary of the deployments
+        # Raises
+            `RestAPIError`: If unable to get the deployments summary
+        """
+        _client = client.get_instance()
+        path_params = [
+            "project",
+            _client._project_id,
+            "serving",
+        ]
+        return _client._send_request("GET", path_params)
