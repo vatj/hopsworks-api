@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from hopsworks_common import constants
+from hopsworks_common.core import constants
 from hopsworks_common.helpers import verbose
 
 
@@ -29,7 +29,7 @@ if constants.HAS_RICH:
     from rich import box
     from rich.markdown import Markdown
     from rich.panel import Panel
-    from rich.table import Table
+    from rich.table import Column, Table
 
 
 def print_connected_to_hopsworks_message(project_name: str, hostname: str):
@@ -40,11 +40,12 @@ def print_connected_to_hopsworks_message(project_name: str, hostname: str):
                 rich_messages.CONNECTED_TO_PROJECT.format(
                     project_name=project_name, hostname=hostname
                 ),
-                title="Hopsworks",
+                title="Connected to Hopsworks!",
                 style="bold",
                 box=box.ASCII2,
                 padding=(1, 2),
             ),
+            justify="center",
         )
     else:
         print(f"Connected to Hopsworks project {project_name} on {hostname}.")
@@ -53,25 +54,30 @@ def print_connected_to_hopsworks_message(project_name: str, hostname: str):
 def print_connected_to_feature_store_message(summary: Optional[Dict[str, Any]] = None):
     if verbose.is_hopsworks_verbose() and verbose.is_rich_print_enabled():
         summary_table = Table(
-            title="Summary",
-            show_header=False,
+            Column("Feature Groups", justify="center"),
+            Column("Feature Views", justify="center"),
+            Column("Training Datasets", justify="center"),
+            Column("Storage Connectors", justify="center"),
+            title=Markdown("## Feature Store Summary"),
+            show_header=True,
+            show_footer=False,
             header_style="bold",
             box=box.ASCII2,
             show_lines=True,
-            headers=["", ""],
-        )
-        summary_table.add_row("Feature Groups", summary.get("num_feature_groups", 0))
-        summary_table.add_row("Feature Views", summary.get("num_feature_views", 0))
-        summary_table.add_row(
-            "Training Datasets", summary.get("num_training_datasets", 0)
         )
         summary_table.add_row(
-            "Storage Connector", summary.get("num_storage_connectors", 0)
+            *[
+                str(summary.get(key, 0))
+                for key in [
+                    "num_feature_groups",
+                    "num_feature_views",
+                    "num_training_datasets",
+                    "num_storage_connectors",
+                ]
+            ],
         )
         method_message = Markdown(
-            "## Methods"
-            if summary
-            else ""
+            ("## Methods\n" if summary else "")
             + rich_messages.HAS_GETTING_STARTED_METHOD.format(
                 class_name="Feature Store"
             )
@@ -95,7 +101,7 @@ def print_connected_to_feature_store_message(summary: Optional[Dict[str, Any]] =
                 f"Feature Groups : {summary.get('num_feature_groups', 0)}",
                 f"Feature Views : {summary.get('num_feature_views', 0)}",
                 f"Training Datasets : {summary.get('num_training_datasets', 0)}",
-                f"Storage Connector : {summary.get('num_storage_connectors', 0)}",
+                f"Storage Connectors : {summary.get('num_storage_connectors', 0)}",
             ]
         )
         print(the_string)

@@ -189,7 +189,6 @@ class Connection:
         except (TypeError, ConnectionError):
             self._connected = False
             raise
-        print("Connected. Call `.close()` to terminate connection gracefully.")
 
     def close(self):
         """Close a connection gracefully.

@@ -180,9 +180,13 @@ class Connection:
         if not name:
             name = client.get_instance()._project_name
         fs = self._feature_store_api.get(util.append_feature_store_suffix(name))
-        summaries = filter(
-            lambda x: x["project_name"] == name,
-            humps.decamelize(self._feature_store_api.get_feature_store_summaries()),
+        summaries = humps.decamelize(
+            list(
+                filter(
+                    lambda x: x["projectName"] == name,
+                    self._feature_store_api.get_feature_store_summaries(),
+                )
+            )
         )
         user_messages.print_connected_to_feature_store_message(
             summary=summaries[0] if summaries else {}

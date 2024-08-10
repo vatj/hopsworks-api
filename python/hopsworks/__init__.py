@@ -32,11 +32,18 @@ from hopsworks.client.exceptions import (
 from hopsworks.connection import Connection
 from hopsworks.core import project_api, secret_api
 from hopsworks.decorators import NoHopsworksConnectionError
+from hopsworks_common.helpers import user_messages
 from requests.exceptions import SSLError
 
 
 # Needs to run before import of hsml and hsfs
 warnings.filterwarnings(action="ignore", category=UserWarning, module=r".*psycopg2")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s: %(message)s",
+    stream=sys.stdout,
+)
 
 import hsfs  # noqa: F401, E402
 import hsml  # noqa: F401, E402
@@ -62,12 +69,6 @@ def hw_formatwarning(message, category, filename, lineno, line=None):
 warnings.formatwarning = hw_formatwarning
 
 __all__ = ["connection", "udf"]
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
-    stream=sys.stdout,
-)
 
 
 def login(
@@ -209,10 +210,6 @@ def login(
             _connected_project = _prompt_project(_hw_connection, project, is_app)
             if _connected_project:
                 _set_active_project(_connected_project)
-            print(
-                "\nLogged in to project, explore it here "
-                + _connected_project.get_url()
-            )
             _initialize_module_apis()
             return _connected_project
         except RestAPIError:
@@ -259,8 +256,6 @@ def login(
         print(
             "Could not find any project, use hopsworks.create_project('my_project') to create one"
         )
-    else:
-        print("\nLogged in to project, explore it here " + _connected_project.get_url())
 
     _initialize_module_apis()
     return _connected_project
@@ -470,5 +465,8 @@ def get_secrets_api():
 
 def _set_active_project(project):
     _client = client.get_instance()
+    user_messages.print_connected_to_hopsworks_message(
+        project.name, hostname=_client._host
+    )
     if _client._is_external():
         _client.provide_project(project.name)

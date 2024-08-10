@@ -27,7 +27,9 @@ from requests.exceptions import ConnectionError
 
 
 HOPSWORKS_PORT_DEFAULT = 443
-HOPSWORKS_HOSTNAME_VERIFICATION_DEFAULT = os.environ.get("HOPSWORKS_HOSTNAME_VERIFICATION", "True").lower() in ("true", "1", "y", "yes")
+HOPSWORKS_HOSTNAME_VERIFICATION_DEFAULT = os.environ.get(
+    "HOPSWORKS_HOSTNAME_VERIFICATION", "True"
+).lower() in ("true", "1", "y", "yes")
 CERT_FOLDER_DEFAULT = "/tmp"
 PROJECT_ID = "HOPSWORKS_PROJECT_ID"
 PROJECT_NAME = "HOPSWORKS_PROJECT_NAME"
@@ -275,8 +277,10 @@ class Connection:
                     self._api_key_value,
                 )
             else:
-                client.init(client_type="hopsworks",
-                            hostname_verification=self._hostname_verification)
+                client.init(
+                    client_type="hopsworks",
+                    hostname_verification=self._hostname_verification,
+                )
 
             self._project_api = project_api.ProjectApi()
             self._secret_api = secret_api.SecretsApi()
@@ -284,10 +288,6 @@ class Connection:
         except (TypeError, ConnectionError):
             self._connected = False
             raise
-        print(
-            "Connected. Call `.close()` to terminate connection gracefully.",
-            flush=True,
-        )
 
         self._check_compatibility()
 

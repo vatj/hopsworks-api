@@ -15,7 +15,7 @@
 #
 
 ## General messages
-CONNECTED_TO_PROJECT = "Connected to Project [bold red]{project_name}[/bold red] on [italic red]{hostname}[/italic red]."
+CONNECTED_TO_PROJECT = "Project [bold red]{project_name}[/bold red] on [italic red]{hostname}[/italic red]."
 HAS_GETTING_STARTED_METHOD = "- Call `getting_started()` method to get an overview of the {class_name} API and capabilities.\n"
 
 ## Feature Store messages

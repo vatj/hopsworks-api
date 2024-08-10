@@ -81,6 +81,7 @@ class Client(base.Client):
         self._cert_folder_base = cert_folder
         self._cert_folder = None
 
+        _logger.debug("Setting client engine: %s", engine)
         self._engine = engine
 
         if not project:
