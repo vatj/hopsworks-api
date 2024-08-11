@@ -30,7 +30,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s: %(message)s",
     stream=sys.stdout,
 )
-if os.environ("HOPSWORKS_USE_RICH_LOGGER"):
+if os.environ.get("HOPSWORKS_USE_RICH_LOGGER"):
     from hopsworks_common.helpers import logging_utils
 
     logging_utils.append_rich_handler_to_logger(remove_existing_handlers=False)

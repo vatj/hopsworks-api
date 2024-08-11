@@ -17,7 +17,11 @@ from __future__ import annotations
 
 import importlib.util
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+
+if TYPE_CHECKING:
+    from rich.logging import RichHandler
 
 
 _rich_handler = None
@@ -30,21 +34,25 @@ def is_rich_logger_enabled():
 
 def append_rich_handler_to_logger(
     logger: Optional[logging.Logger] = None,
+    handler: Optional[RichHandler] = None,
     remove_existing_handlers: bool = False,
 ):
     global _rich_handler
     if importlib.util.find_spec("rich") is not None:
         from rich.logging import RichHandler
+    else:
+        raise ImportError(
+            "rich package is not installed, please install it to use rich logger"
+        )
 
+    if handler is None:
         rich_handler = RichHandler(
             rich_tracebacks=True,
             tracebacks_show_locals=True,
             tracebacks_show_hidden_frames=True,
         )
     else:
-        raise ImportError(
-            "rich package is not installed, please install it to use rich logger"
-        )
+        rich_handler = handler
 
     if logger is None:
         logger = logging.getLogger("hopsworks")
