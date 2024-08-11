@@ -54,3 +54,22 @@ def get_rich_console() -> Console:
 
 def get_python_lexer_theme() -> str:
     return verbose_constants.PYTHON_LEXER_THEME
+
+
+def start_rich_recording() -> None:
+    global _rich_console
+    if _rich_console is None:
+        enable_rich_verbose_mode()
+        init_rich_with_default_config()
+    _rich_console.record = True
+    _rich_console.log("[bold]Recording script execution using rich...[/bold]")
+
+
+def is_rich_recording() -> bool:
+    global _rich_console
+    return _rich_console.record
+
+
+def stop_rich_recording() -> None:
+    global _rich_console
+    _rich_console.log("[bold]Stop recording script execution...[/bold]")
