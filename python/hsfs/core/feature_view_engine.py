@@ -19,6 +19,7 @@ import datetime
 import warnings
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
+import humps
 import numpy as np
 import pandas as pd
 from hopsworks_common import client
@@ -30,6 +31,7 @@ from hsfs import (
     training_dataset_feature,
     util,
 )
+from hsfs._rich_repr import repr_feature_view
 from hsfs.client import exceptions
 from hsfs.constructor.filter import Filter, Logic
 from hsfs.core import (
@@ -1017,8 +1019,8 @@ class FeatureViewEngine:
     def read_feature_logs(
         self,
         fv,
-        start_time: Optional[Union[str, int, datetime, datetime.date]] = None,
-        end_time: Optional[Union[str, int, datetime, datetime.date]] = None,
+        start_time: Optional[Union[str, int, datetime.datetime, datetime.date]] = None,
+        end_time: Optional[Union[str, int, datetime.datetime, datetime.date]] = None,
         filter: Optional[Union[Filter, Logic]] = None,
         transformed: Optional[bool] = False,
         training_dataset_version=None,
@@ -1095,7 +1097,9 @@ class FeatureViewEngine:
     def get_log_timeline(
         self,
         fv,
-        wallclock_time: Optional[Union[str, int, datetime, datetime.date]] = None,
+        wallclock_time: Optional[
+            Union[str, int, datetime.datetime, datetime.date]
+        ] = None,
         limit: Optional[int] = None,
         transformed: Optional[bool] = False,
     ) -> Dict[str, Dict[str, str]]:
@@ -1126,3 +1130,48 @@ class FeatureViewEngine:
     def delete_feature_logs(self, fv, feature_logging, transformed):
         self._feature_view_api.delete_feature_logs(fv.name, fv.version, transformed)
         feature_logging.update(self.get_feature_logging(fv))
+
+    def list_feature_views(
+        self, latest_version_only: bool = True, with_features: bool = False
+    ) -> List[Dict[str, Any]]:
+        fv_list = [
+            humps.decamelize(fv_obj)
+            for fv_obj in self._feature_view_api.get_all(
+                latest_version_only=latest_version_only, with_features=with_features
+            )
+        ]
+        if latest_version_only:
+            fv_list = list(
+                filter(
+                    lambda fview: fview["version"]
+                    == max(
+                        fv1["version"]
+                        for fv1 in fv_list
+                        if fv1["name"] == fview["name"]
+                    ),
+                    fv_list,
+                )
+            )
+
+        return sorted(fv_list, key=lambda fview: fview["name"])
+
+    def show_info(
+        self, feature_view_obj: feature_view.FeatureView, show_features: bool = True
+    ) -> None:
+        repr_feature_view.build_and_print_info_fv_table(
+            feature_view_obj, show_features=show_features
+        )
+
+    def show_all(
+        self,
+        latest_version_only: bool = True,
+        show_features: bool = False,
+        show_description: bool = False,
+    ):
+        fview_dicts = self.list_feature_views(
+            latest_version_only=latest_version_only,
+            with_features=show_features,
+        )
+        repr_feature_view.show_rich_table_feature_views(
+            fview_dicts, show_features, show_description
+        )

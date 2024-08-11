@@ -1758,6 +1758,62 @@ class FeatureStore:
         arrow_flight_client.close()
         arrow_flight_client.get_instance()
 
+    def show_feature_groups(
+        self,
+        latest_only: bool = True,
+        show_features: bool = False,
+        show_description: bool = False,
+    ) -> None:
+        """Prints a list of all feature groups in the feature store.
+
+        !!! example
+            ```python
+            # get feature store instance
+            fs = ...
+
+            # show all feature groups
+            fs.show_feature_groups()
+            ```
+
+        # Arguments
+            latest_only: If `True` only the latest version of each feature group is shown, defaults to `True`.
+            show_features: If `True` also show the features of the feature groups, defaults to `False`.
+            show_description: If `True` also show the description of the feature groups, defaults to `False`.
+
+        # Returns
+            `None`
+        """
+        self._feature_group_engine.show_all(
+            latest_only, show_features, show_description
+        )
+
+    def show_feature_views(
+        self,
+        latest_only: bool = True,
+        show_features: bool = False,
+        show_description: bool = False,
+    ) -> None:
+        """Prints a list of all feature views in the feature store.
+
+        !!! example
+            ```python
+            # get feature store instance
+            fs = ...
+
+            # show all feature views
+            fs.show_feature_views()
+            ```
+
+        # Arguments
+            latest_only: If `True` only the latest version of each feature view is shown, defaults to `True`.
+            show_features: If `True` also show the features of the feature views, defaults to `False`.
+            show_description: If `True` also show the description of the feature views, defaults to `False`.
+
+        # Returns
+            `None`
+        """
+        self._feature_view_engine.show_all(latest_only, show_features, show_description)
+
     @property
     def id(self) -> int:
         """Id of the feature store."""
