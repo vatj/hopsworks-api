@@ -2125,6 +2125,8 @@ class FeatureGroup(FeatureGroupBase):
         self._description: Optional[str] = description
         self._created = created
         self._creator = user.User.from_response_json(creator)
+        self._external = False
+        self._spine = False
 
         self._features = [
             feature.Feature.from_response_json(feat) if isinstance(feat, dict) else feat
@@ -3631,6 +3633,8 @@ class ExternalFeatureGroup(FeatureGroupBase):
         self._query = query
         self._data_format = data_format.upper() if data_format else None
         self._path = path
+        self._external = True
+        self._spine = False
 
         self._features = [
             feature.Feature.from_response_json(feat) if isinstance(feat, dict) else feat
@@ -4154,6 +4158,8 @@ class SpineGroup(FeatureGroupBase):
         self._description = description
         self._created = created
         self._creator = user.User.from_response_json(creator)
+        self._spine = True
+        self._external = True
 
         self._features = [
             feature.Feature.from_response_json(feat) if isinstance(feat, dict) else feat
