@@ -23,27 +23,33 @@ import tempfile
 import warnings
 from pathlib import Path
 
-from hopsworks import client, constants, project, version
-from hopsworks.client.exceptions import (
+
+# Import and init logger before doing anything else
+logging.basicConfig(
+    level=os.environ.get("HOPSWORKS_SDK_LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s: %(message)s",
+    stream=sys.stdout,
+)
+if os.environ("HOPSWORKS_USE_RICH_LOGGER"):
+    from hopsworks_common.helpers import logging_utils
+
+    logging_utils.append_rich_handler_to_logger(remove_existing_handlers=False)
+
+from hopsworks import client, constants, project, version  # noqa: E402
+from hopsworks.client.exceptions import (  # noqa: E402
     HopsworksSSLClientError,
     ProjectException,
     RestAPIError,
 )
-from hopsworks.connection import Connection
-from hopsworks.core import project_api, secret_api
-from hopsworks.decorators import NoHopsworksConnectionError
-from hopsworks_common.helpers import user_messages
-from requests.exceptions import SSLError
+from hopsworks.connection import Connection  # noqa: E402
+from hopsworks.core import project_api, secret_api  # noqa: E402
+from hopsworks.decorators import NoHopsworksConnectionError  # noqa: E402
+from hopsworks_common.helpers import user_messages  # noqa: E402
+from requests.exceptions import SSLError  # noqa: E402
 
 
 # Needs to run before import of hsml and hsfs
 warnings.filterwarnings(action="ignore", category=UserWarning, module=r".*psycopg2")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
-    stream=sys.stdout,
-)
 
 import hsfs  # noqa: F401, E402
 import hsml  # noqa: F401, E402
