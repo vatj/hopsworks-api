@@ -147,7 +147,7 @@ def make_rich_text_row(
 ) -> Tuple[List[str], Optional[str], Optional[Table]]:
     online_status = "🟢 Real-Time" if fgroup.online_enabled else "🔴 Batch"
     entries = [
-        fgroup.id,
+        str(fgroup.id),
         fgroup.name,
         f"v{fgroup.version}",
         online_status,
@@ -237,5 +237,6 @@ def show_rich_table_feature_groups(
         for entries, description, _ in row_entries_and_opt_features_and_description:
             if show_description:
                 entries.append(description or "")
+            print("entries : ", entries, flush=True)
             the_table.add_row(*entries)
         rich_console.print(the_table)

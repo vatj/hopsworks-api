@@ -212,9 +212,12 @@ class FeatureGroupApi:
         if with_features:
             query_params["expand"] = ["features"]
 
-        return fg_mod.FeatureGroup.from_response_json(
-            _client._send_request("GET", path_params, query_params)
-        )
+        return [
+            fg_mod.FeatureGroup.from_response_json(json_dict=json_dict)
+            for json_dict in _client._send_request("GET", path_params, query_params)[
+                "items"
+            ]
+        ]
 
     def delete_content(
         self,

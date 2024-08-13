@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import os
+import pathlib
+from typing import Union
 
 from hopsworks_common.helpers import verbose_constants
 from rich.console import Console
@@ -27,6 +29,11 @@ _rich_console = None
 def enable_rich_verbose_mode() -> None:
     os.environ[verbose_constants.VERBOSE_ENV_VAR] = "true"
     os.environ[verbose_constants.USE_RICH_CONSOLE_ENV_VAR] = "true"
+
+
+def disable_rich_verbose_mode() -> None:
+    os.environ[verbose_constants.VERBOSE_ENV_VAR] = "false"
+    os.environ[verbose_constants.USE_RICH_CONSOLE_ENV_VAR] = "false"
 
 
 def is_rich_print_enabled() -> bool:
@@ -70,6 +77,42 @@ def is_rich_recording() -> bool:
     return _rich_console.record
 
 
-def stop_rich_recording() -> None:
+def stop_rich_recording(recording_path: Union[pathlib.Path, str]) -> None:
     global _rich_console
+    if _rich_console is None:
+        raise ValueError("Rich console is not initialized.")
+
+    if isinstance(recording_path, str):
+        recording_path = pathlib.Path(recording_path)
+
+    if not isinstance(recording_path, pathlib.Path):
+        raise TypeError(
+            f"Invalid recording path, must be a path or a string: {recording_path} of type {type(recording_path)}."
+        )
+
+    if not recording_path.parent.exists():
+        raise FileNotFoundError(
+            f"Recording directory not found: {recording_path.parent}."
+        )
+
+    if not is_rich_recording():
+        raise ValueError(
+            "Rich console is not recording. To enable recording, call start_rich_recording() first."
+        )
+    extension = recording_path.suffix[1:]
+
+    try:
+        if extension == "html":
+            _rich_console.save_html(recording_path)
+        elif extension == "svg":
+            _rich_console.save_svg(recording_path)
+        elif extension in ["txt", "log"]:
+            _rich_console.save_text(recording_path)
+        else:
+            raise ValueError(f"Unsupported file format: {extension}")
+    except Exception as e:
+        raise e
+    finally:
+        _rich_console.record = False
+    _rich_console.log(f"[bold]Recording saved to: {recording_path}[/bold]")
     _rich_console.log("[bold]Stop recording script execution...[/bold]")
