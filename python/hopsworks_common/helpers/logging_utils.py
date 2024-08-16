@@ -49,7 +49,6 @@ def append_rich_handler_to_logger(
         rich_handler = RichHandler(
             rich_tracebacks=True,
             tracebacks_show_locals=True,
-            tracebacks_show_hidden_frames=True,
         )
     else:
         rich_handler = handler
