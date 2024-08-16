@@ -34,6 +34,7 @@ from hsfs import (
     usage,
     util,
 )
+from hsfs._rich_repr import repr_feature_group, repr_feature_view
 from hsfs.client import exceptions
 from hsfs.constructor.query import Query
 from hsfs.core import (
@@ -164,6 +165,9 @@ class FeatureStore:
             version = self.DEFAULT_VERSION
         feature_group_object = self._feature_group_api.get(self.id, name, version)
         feature_group_object.feature_store = self
+        repr_feature_group.build_and_print_info_fg_table(
+            feature_group_object, show_features=True
+        )
         return feature_group_object
 
     def get_feature_groups(
@@ -229,7 +233,9 @@ class FeatureStore:
         # Raises
             `hsfs.client.exceptions.RestAPIError`: If unable to retrieve feature group from the feature store.
         """
-        return self.get_external_feature_group(name, version)
+        fg_obj = self.get_external_feature_group(name, version)
+        repr_feature_group.build_and_print_info_fg_table(fg_obj, show_features=True)
+        return fg_obj
 
     @usage.method_logger
     def get_external_feature_group(
@@ -275,6 +281,7 @@ class FeatureStore:
             version,
         )
         feature_group_object.feature_store = self
+
         return feature_group_object
 
     @usage.method_logger
@@ -787,6 +794,9 @@ class FeatureStore:
         try:
             feature_group_object = self._feature_group_api.get(self.id, name, version)
             feature_group_object.feature_store = self
+            repr_feature_group.build_and_print_info_fg_table(
+                feature_group_object, show_features=True
+            )
             return feature_group_object
         except exceptions.RestAPIError as e:
             if (
@@ -1093,6 +1103,9 @@ class FeatureStore:
             online_config=online_config,
         )
         feature_group_object.feature_store = self
+        repr_feature_view.build_and_print_info_fg_table(
+            feature_group_object, show_features=True
+        )
         return feature_group_object
 
     @usage.method_logger
@@ -1626,7 +1639,11 @@ class FeatureStore:
             featurestore_name=self._name,
             logging_enabled=logging_enabled,
         )
-        return self._feature_view_engine.save(feat_view)
+        fv_obj = self._feature_view_engine.save(feat_view)
+        repr_feature_view.build_and_print_info_fv_table(
+            fview_obj=fv_obj, show_features=True
+        )
+        return fv_obj
 
     @usage.method_logger
     def get_or_create_feature_view(
@@ -1694,7 +1711,10 @@ class FeatureStore:
             `FeatureView`: The feature view metadata object.
         """
         try:
-            return self._feature_view_engine.get(name, version)
+            fv_obj = self._feature_view_engine.get(name, version)
+            repr_feature_view.build_and_print_info_fv_table(
+                fview_obj=fv_obj, show_features=True
+            )
         except exceptions.RestAPIError as e:
             if (
                 e.response.json().get("errorCode", "") == 270181
@@ -1754,7 +1774,11 @@ class FeatureStore:
                 stacklevel=1,
             )
             version = self.DEFAULT_VERSION
-        return self._feature_view_engine.get(name, version)
+        fv_obj = self._feature_view_engine.get(name, version)
+        repr_feature_view.build_and_print_info_fv_table(
+            fview_obj=fv_obj, show_features=True
+        )
+        return fv_obj
 
     @usage.method_logger
     def get_feature_views(self, name: str) -> List[feature_view.FeatureView]:

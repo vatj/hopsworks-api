@@ -70,10 +70,13 @@ def make_rich_text_row(
 
 
 def build_training_feature_bullets(fv_dict: Dict[str, Any]) -> Table:
-    feature_table = Table(box=None, show_lines=False)
-    feature_table.add_column("  Features :")
-    feature_table.add_column("")
-    feature_table.add_column("")
+    feature_table = Table(
+        box=None, show_lines=False, title="Features", title_justify="left"
+    )
+    feature_table.add_column("Name", no_wrap=True)
+    feature_table.add_column("Type", max_width=15)
+    feature_table.add_column("Role", max_width=15)
+    feature_table.add_column("Provenance", max_width=15)
 
     for sk in fv_dict["serving_keys"]:
         feature_table.add_row(
@@ -175,7 +178,7 @@ def build_training_feature_table(fview_obj: fv_mod.FeatureView) -> Table:
     )
     feature_table.add_column("Name")
     feature_table.add_column("Type")
-    feature_table.add_column("Metadata")
+    feature_table.add_column("Role")
     if has_transformation:
         feature_table.add_column("Transformation Function")
     feature_table.add_column("Feature Group")
