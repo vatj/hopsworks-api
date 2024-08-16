@@ -15,6 +15,7 @@
 #
 
 import importlib
+import logging
 import os
 import re
 import sys
@@ -33,6 +34,8 @@ HOPSWORKS_HOSTNAME_VERIFICATION_DEFAULT = os.environ.get(
 CERT_FOLDER_DEFAULT = "/tmp"
 PROJECT_ID = "HOPSWORKS_PROJECT_ID"
 PROJECT_NAME = "HOPSWORKS_PROJECT_NAME"
+
+_logger = logging.getLogger(__name__)
 
 
 class Connection:
@@ -164,8 +167,15 @@ class Connection:
         # Returns
             `Project`. A project handle object to perform operations on.
         """
-
-        if not name:
+        _client = client.get_instance()
+        if not name and not _client._project_name:
+            raise ValueError(
+                "No project name provided. Please provide a project name or"
+                " set a project when login or creating the connection."
+            )
+        elif not _client._project_name:
+            _client.provide_project(name)
+        elif not name:
             name = client.get_instance()._project_name
 
         return self._project_api._get_project(name)
@@ -289,6 +299,13 @@ class Connection:
             self._connected = False
             raise
 
+        _client = client.get_instance()
+        if _client._is_external() and not hasattr(_client, "_project_name"):
+            _logger.warn(
+                "Connected to Hopsworks. You must provide a project name to access project resources."
+                "Use `connection.get_project('my_project')` or `hopsworks.client.get_instance().provide_project('my_project')`",
+                stacklevel=2,
+            )
         self._check_compatibility()
 
     def close(self):
