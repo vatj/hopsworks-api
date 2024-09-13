@@ -240,12 +240,12 @@ class VectorServer:
             skip_fg_ids=self._skip_fg_ids,
             serving_keys=self.serving_keys,
             external=external,
+            connection_options=options,
         )
         self.sql_client.init_prepared_statements(
             entity,
             inference_helper_columns,
         )
-        self.sql_client.init_async_mysql_connection(options=options)
 
     def setup_rest_client_and_engine(
         self,

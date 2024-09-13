@@ -19,9 +19,9 @@ import asyncio
 import json
 import logging
 import re
+import sys
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
-from hopsworks_common.core import variable_api
 from hsfs import util
 from hsfs.core import (
     feature_view_api,
@@ -42,7 +42,7 @@ if HAS_AIOMYSQL:
     import aiomysql.utils
 
 if HAS_SQLALCHEMY:
-    from sqlalchemy import bindparam, exc, sql, text
+    from sqlalchemy import bindparam, sql, text
 
 if HAS_AIOMYSQL and HAS_SQLALCHEMY:
     from hsfs.core import util_sql
@@ -78,7 +78,6 @@ class OnlineStoreSqlClient:
 
         self._prepared_statements: Dict[str, List[ServingPreparedStatement]] = {}
         self._parametrised_prepared_statements = {}
-        self._prepared_statement_engine = None
 
         self._feature_view_api = feature_view_api.FeatureViewApi(feature_store_id)
         self._training_dataset_api = training_dataset_api.TrainingDatasetApi(
@@ -87,7 +86,7 @@ class OnlineStoreSqlClient:
         self._storage_connector_api = storage_connector_api.StorageConnectorApi()
         self._online_connector = None
         self._hostname = None
-        self._connection_options = None
+        self._connection_options = connection_options
 
     def fetch_prepared_statements(
         self,
@@ -150,6 +149,17 @@ class OnlineStoreSqlClient:
         self.init_parametrize_and_serving_utils(
             self.prepared_statements[self.BATCH_VECTOR_KEY]
         )
+        if "ipykernel" in sys.modules:
+            _logger.debug(
+                "Found imported ipykernel, running in Jupyter notebook, applying nest_asyncio"
+            )
+            import nest_asyncio
+
+            nest_asyncio.apply()
+        else:
+            _logger.debug(
+                "Module ipykernel not found, running in python script. Not applying nest_asyncio"
+            )
 
         for key in self.get_prepared_statement_labels(inference_helper_columns):
             _logger.debug(f"Parametrize prepared statements for key {key}")
@@ -226,32 +236,6 @@ class OnlineStoreSqlClient:
             )
 
         return prepared_statements_dict
-
-    def init_async_mysql_connection(self, options=None):
-        assert self._prepared_statements.get(self.SINGLE_VECTOR_KEY) is not None, (
-            "Prepared statements are not initialized. "
-            "Please call `init_prepared_statement` method first."
-        )
-        _logger.debug(
-            "Fetching storage connector for sql connection to Online Feature Store."
-        )
-        self._online_connector = self._storage_connector_api.get_online_connector(
-            self._feature_store_id
-        )
-        self._connection_options = options
-        self._hostname = (
-            variable_api.VariableApi().get_loadbalancer_external_domain("mysqld")
-            if self._external
-            else None
-        )
-
-        if util.is_runtime_notebook():
-            _logger.debug("Running in Jupyter notebook, applying nest_asyncio")
-            import nest_asyncio
-
-            nest_asyncio.apply()
-        else:
-            _logger.debug("Running in python script. Not applying nest_asyncio")
 
     def get_single_feature_vector(self, entry: Dict[str, Any]) -> Dict[str, Any]:
         """Retrieve single vector with parallel queries using aiomysql engine."""
@@ -455,33 +439,8 @@ class OnlineStoreSqlClient:
                 asyncio.set_event_loop(loop)
         return loop
 
-    def refresh_mysql_connection(self):
-        _logger.debug("Refreshing MySQL connection.")
-        try:
-            _logger.debug("Checking if the connection is still alive.")
-            with self._prepared_statement_engine.connect():
-                # This will raise an exception if the connection is closed
-                pass
-        except exc.OperationalError:
-            _logger.debug("Connection is closed, re-establishing connection.")
-            self._set_mysql_connection()
-
     def _make_preview_statement(self, statement, n):
         return text(statement.text[: statement.text.find(" WHERE ")] + f" LIMIT {n}")
-
-    def _set_mysql_connection(self, options=None):
-        _logger.debug(
-            "Retrieve MySQL connection details from the online storage connector."
-        )
-        online_conn = self._storage_connector_api.get_online_connector(
-            self._feature_store_id
-        )
-        _logger.debug(
-            f"Creating MySQL {'external' if self.external is True else ''}engine with options: {options}."
-        )
-        self._prepared_statement_engine = util_sql.create_mysql_engine(
-            online_conn, self._external, options=options
-        )
 
     @staticmethod
     def _parametrize_query(name: str, query_online: str) -> str:
@@ -547,12 +506,11 @@ class OnlineStoreSqlClient:
         ]
 
     async def _get_connection_pool(self, default_min_size: int) -> None:
-        self._connection_pool = await util_sql.create_async_engine(
+        self._hostname, self._connection_pool = await util_sql.create_async_engine(
             self._online_connector,
             self._external,
             default_min_size,
             options=self._connection_options,
-            hostname=self._hostname,
         )
 
     async def _query_async_sql(self, stmt, bind_params):
@@ -624,15 +582,6 @@ class OnlineStoreSqlClient:
     @property
     def feature_store_id(self) -> int:
         return self._feature_store_id
-
-    @property
-    def prepared_statement_engine(self) -> Optional[Any]:
-        """JDBC connection engine to retrieve connections to online features store from."""
-        return self._prepared_statement_engine
-
-    @prepared_statement_engine.setter
-    def prepared_statement_engine(self, prepared_statement_engine: Any) -> None:
-        self._prepared_statement_engine = prepared_statement_engine
 
     @property
     def prepared_statements(

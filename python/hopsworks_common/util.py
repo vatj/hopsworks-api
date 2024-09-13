@@ -19,7 +19,6 @@ from __future__ import annotations
 import itertools
 import json
 import re
-import sys
 import threading
 import time
 from datetime import date, datetime, timezone
@@ -323,13 +322,6 @@ def get_feature_group_url(feature_store_id: int, feature_group_id: int) -> str:
         + str(feature_group_id)
     )
     return get_hostname_replaced_url(sub_path)
-
-
-def is_runtime_notebook():
-    if "ipykernel" in sys.modules:
-        return True
-    else:
-        return False
 
 
 class VersionWarning(Warning):
