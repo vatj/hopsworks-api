@@ -37,7 +37,7 @@ _logger = logging.getLogger(__name__)
 def create_mysql_engine(
     online_conn: Any, external: bool, options: Optional[Dict[str, Any]] = None
 ) -> Any:
-    _logger.debug("Creating MySQL async engine")
+    _logger.debug("Creating SQL Alchemy MYSQL engine")
     online_options = online_conn.spark_options()
     sql_alchemy_conn_url = build_database_url(
         online_options=online_options, external=external
