@@ -122,5 +122,7 @@ async def create_async_engine(
             options.get("maxsize", default_min_size) if options else default_min_size
         ),
         pool_recycle=(options.get("pool_recycle", 10) if options else 10),
+        isolation_level=options.get("isolation_level", "READ COMMITTED"),
+        **options,
     )
     return pool
