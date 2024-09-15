@@ -84,7 +84,9 @@ class OnlineStoreSqlClient:
             feature_store_id
         )
         self._storage_connector_api = storage_connector_api.StorageConnectorApi()
-        self._online_connector = None
+        self._online_connector = self._storage_connector_api.get_online_connector(
+            self._feature_store_id
+        )
         self._hostname = None
         self._connection_options = connection_options
 
