@@ -79,14 +79,14 @@ def build_database_url(online_options: Dict[str, str], external: bool) -> URL:
     if external:
         # This only works with external clients.
         # Hopsworks clients should use the storage connector
-        url.host = variable_api.VariableApi().get_loadbalancer_external_domain("mysqld")
+        url = url.set(
+            host=variable_api.VariableApi().get_loadbalancer_external_domain("mysqld")
+        )
         _logger.debug("External MySQL host: %s", url.host)
     else:
         _logger.debug("Internal MySQL host: %s", url.host)
-    url.username = online_options["user"]
-    url.password = "<HIDDEN>"
+    url.set(username=online_options["user"], password=online_options["password"])
     _logger.debug("MySQL connection string: %s", url.render_as_string())
-    url.password = online_options["password"]
 
     return url
 
@@ -106,6 +106,12 @@ async def create_async_engine(
     sqlalchemy_url = build_database_url(
         online_options=online_conn.spark_options(), external=external
     )
+    if options is None:
+        options = {}
+    if not HAS_AIOMYSQL:
+        raise ImportError(
+            "hopsworks_aiomysql is not installed. Please install hopsworks_aiomysql to use this feature."
+        )
 
     # create a aiomysql connection pool
     pool = await async_create_engine(
@@ -115,14 +121,10 @@ async def create_async_engine(
         password=sqlalchemy_url.password,
         db=sqlalchemy_url.database,
         loop=loop,
-        minsize=(
-            options.get("minsize", default_min_size) if options else default_min_size
-        ),
-        maxsize=(
-            options.get("maxsize", default_min_size) if options else default_min_size
-        ),
-        pool_recycle=(options.get("pool_recycle", 10) if options else 10),
-        isolation_level=options.get("isolation_level", "READ COMMITTED"),
+        minsize=options.get("minsize", default_min_size),
+        maxsize=options.get("maxsize", default_min_size),
+        pool_recycle=options.get("pool_recycle", 10),
+        autocommit=True,
         **options,
     )
-    return pool
+    return sqlalchemy_url.host, pool
