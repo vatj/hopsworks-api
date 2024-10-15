@@ -137,9 +137,7 @@ class StorageConnector(ABC):
         pass
 
     def prepare_spark(self, path: Optional[str] = None) -> Optional[str]:
-        _logger.info(
-            "This Storage Connector cannot be prepared for Spark."
-        )
+        _logger.info("This Storage Connector cannot be prepared for Spark.")
         return path
 
     def read(
@@ -258,6 +256,11 @@ class HopsFSConnector(StorageConnector):
         arguments.
         """
         return {}
+
+    def prepare_spark(self, path: Optional[str] = None) -> Optional[str]:
+        if path is None:
+            raise ValueError("Path is required for HopsFS connector.")
+        return self._get_path(path)
 
     def _get_path(self, sub_path: str) -> str:
         return os.path.join(self._hopsfs_path, sub_path)
