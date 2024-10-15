@@ -18,6 +18,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import pathlib
 import re
 import warnings
 from abc import ABC, abstractmethod
@@ -259,8 +260,13 @@ class HopsFSConnector(StorageConnector):
 
     def prepare_spark(self, path: Optional[str] = None) -> Optional[str]:
         if path is None:
-            raise ValueError("Path is required for HopsFS connector.")
-        return self._get_path(path)
+            return self._hopsfs_path
+        else:
+            the_path = pathlib.Path(path)
+            if the_path.is_absolute():
+                return path
+            else:
+                return self._get_path(path)
 
     def _get_path(self, sub_path: str) -> str:
         return os.path.join(self._hopsfs_path, sub_path)

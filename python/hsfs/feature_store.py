@@ -526,7 +526,9 @@ class FeatureStore:
             ]
         ] = None,
         offline_backfill_every_hr: Optional[Union[int, str]] = None,
-        storage_connector: Union[storage_connector.StorageConnector, Dict[str, Any]] = None,
+        storage_connector: Union[
+            storage_connector.StorageConnector, Dict[str, Any]
+        ] = None,
         path: Optional[str] = None,
     ) -> feature_group.FeatureGroup:
         """Create a feature group metadata object.
@@ -699,7 +701,9 @@ class FeatureStore:
         ] = None,
         online_config: Optional[Union[OnlineConfig, Dict[str, Any]]] = None,
         offline_backfill_every_hr: Optional[Union[int, str]] = None,
-        storage_connector: Union[storage_connector.StorageConnector, Dict[str, Any]] = None,
+        storage_connector: Union[
+            storage_connector.StorageConnector, Dict[str, Any]
+        ] = None,
         path: Optional[str] = None,
     ) -> Union[
         feature_group.FeatureGroup,
@@ -1096,6 +1100,7 @@ class FeatureStore:
             query=query,
             data_format=data_format,
             path=path,
+            location=path if len(path) > 0 else None,
             options=options or {},
             storage_connector=storage_connector,
             version=version,
