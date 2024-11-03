@@ -54,7 +54,7 @@ jobs:
                 USE_LOADTEST_API_KEY_FIXTURE: true
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
-                PARALLEL_TESTS: 3
+                PARALLEL_TESTS: 6
               run: |
                 echo "Running e2e tests with clusterFirstWithHostNet"
                 HELPERS_PATH=${{github.workspace}}/loadtest/tests
