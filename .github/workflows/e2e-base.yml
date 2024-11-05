@@ -44,7 +44,8 @@ jobs:
                 HELPERS_PATH=${{github.workspace}}/loadtest/tests
                 export PYTHONPATH=$HELPERS_PATH:$PYTHONPATH
                 $CONDA_ENV_PATH/python tests/setup_project.py
-                echo "### Project credentials\n```$(cat /tmp/fixtures.json)```" >> $GITHUB_STEP_SUMMARY
+                # Display the project credentials as step summary for easy access
+                cat /tmp/fixtures.json >> $GITHUB_STEP_SUMMARY
 
             - name: Runs only e2e tests suite for commit ${{ env.GITHUB_SHORT_SHA }}
               env:
@@ -59,4 +60,5 @@ jobs:
                 export PYTHONPATH=$HELPERS_PATH:$PYTHONPATH
                 cd ${{github.workspace}}/loadtest/tests
                 ./run_e2e_on_runner.sh $MARKER
-                echo "# Pytest Results\n$(cat /tmp/summary.log)" >> $GITHUB_STEP_SUMMARY
+                cat /tmp/summary.log
+                cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
