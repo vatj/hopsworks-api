@@ -34,7 +34,7 @@ jobs:
                 $CONDA_ENV_PATH/pip install rich
                 pip freeze
 
-            - name: Setup project
+            - name: Setup project loadtest_${{ env.GITHUB_SHORT_SHA }}
               env:
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
