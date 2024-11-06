@@ -46,7 +46,9 @@ jobs:
                 export PYTHONPATH=$HELPERS_PATH:$PYTHONPATH
                 $CONDA_ENV_PATH/python tests/setup_project.py
                 # Display the project credentials as step summary for easy access
-                cat /tmp/fixtures.json >> $GITHUB_STEP_SUMMARY
+                echo "## Test Credentials\n" >> $GITHUB_STEP_SUMMARY
+                echo "username : $(jq -r '.username' $FIXTURES_PATH)" >> $GITHUB_STEP_SUMMARY
+                echo "password : $(jq -r '.password' $FIXTURES_PATH)" >> $GITHUB_STEP_SUMMARY
 
             - name: Runs only e2e tests suite for commit ${{ env.GITHUB_SHORT_SHA }}
               env:
