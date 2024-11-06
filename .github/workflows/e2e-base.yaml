@@ -2,6 +2,10 @@ name: Basic e2e tests
 
 on: pull_request
 
+concurrency:
+  group: e2e-tests
+  cancel-in-progress: true
+
 jobs:
     e2e_quick:
         runs-on: 'ghrunner-loadtest-4.0'
@@ -60,7 +64,7 @@ jobs:
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
                 PYTEST_TIMEOUT: 1200
-                PARALLEL_TESTS: 3
+                PARALLEL_TESTS: 6
               run: |
                 cd ${{github.workspace}}/loadtest/tests
                 ./run_e2e_on_runner.sh $MARKER
