@@ -34,7 +34,7 @@ jobs:
                 $CONDA_ENV_PATH/pip install pytest-reportlog
                 pip freeze
 
-            - name: Setup project loadtest_${{ env.GITHUB_SHORT_SHA }} with user u${{ env.GITHUB_SHORT_SHA }}
+            - name: Setup test user and api key
               env:
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
