@@ -60,7 +60,7 @@ jobs:
                 PYTEST_TIMEOUT: 1200
                 PARALLEL_TESTS: 5
               run: |
-                echo "Running e2e tests with marker $MARKER"
+                echo "Running e2e marker $MARKER"
                 HELPERS_PATH=${{github.workspace}}/loadtest/tests
                 export PYTHONPATH=$HELPERS_PATH:$PYTHONPATH
                 cd ${{github.workspace}}/loadtest/tests
