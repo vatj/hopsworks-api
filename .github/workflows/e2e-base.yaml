@@ -44,6 +44,7 @@ jobs:
                 cd ${{github.workspace}}/loadtest
                 HELPERS_PATH=${{github.workspace}}/loadtest/tests
                 export PYTHONPATH=$HELPERS_PATH:$PYTHONPATH
+                echo "PYTHONPATH=$PYTHONPATH" >> $GITHUB_ENV
                 $CONDA_ENV_PATH/python tests/setup_project.py
                 # Display the project credentials as step summary for easy access
                 echo "## Test Credentials" >> $GITHUB_STEP_SUMMARY
@@ -55,14 +56,14 @@ jobs:
                 MARKER: python_quick_e2e
                 FIXTURES_PATH: /tmp/fixtures.json
                 USE_LOADTEST_API_KEY_FIXTURE: true
+                PYTHONPATH: ${{env.PYTHONPATH}}
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
                 PYTEST_TIMEOUT: 1200
                 PARALLEL_TESTS: 3
               run: |
-                HELPERS_PATH=${{github.workspace}}/loadtest/tests
-                export PYTHONPATH=$HELPERS_PATH:$PYTHONPATH
                 cd ${{github.workspace}}/loadtest/tests
                 ./run_e2e_on_runner.sh $MARKER
                 cat /tmp/summary.log
                 cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
+              shell: bash
