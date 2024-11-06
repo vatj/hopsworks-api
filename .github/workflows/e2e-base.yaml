@@ -18,7 +18,7 @@ jobs:
               uses: actions/checkout@v4
               with:
                   repository: 'vatj/loadtest'
-                  ref: 'draft-e2e-script-staging'
+                  ref: '4.0-draft-e2e'
                   token: ${{ secrets.PAT_LOADTEST }}
                   path: loadtest
             
