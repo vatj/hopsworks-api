@@ -48,7 +48,7 @@ jobs:
                 # Display the project credentials as step summary for easy access
                 echo "## Test Credentials" >> $GITHUB_STEP_SUMMARY
                 echo "username : $(jq -r '.test_user_email' $FIXTURES_PATH)" >> $GITHUB_STEP_SUMMARY
-                echo "password : $(jq -r '.test_user-password' $FIXTURES_PATH)" >> $GITHUB_STEP_SUMMARY
+                echo "password : $(jq -r '.test_user_password' $FIXTURES_PATH)" >> $GITHUB_STEP_SUMMARY
 
             - name: Runs only e2e tests suite for commit ${{ env.GITHUB_SHORT_SHA }}
               env:
