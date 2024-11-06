@@ -42,7 +42,7 @@ jobs:
               env:
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
-                USE_LOADTEST_API_KEY_FIXTURE: true
+                USE_LOADTEST_PROJECT_FIXTURE: true
                 FIXTURES_PATH: /tmp/fixtures.json
               run: |
                 cd ${{github.workspace}}/loadtest
@@ -59,7 +59,7 @@ jobs:
               env:
                 MARKER: python_quick_e2e
                 FIXTURES_PATH: /tmp/fixtures.json
-                USE_LOADTEST_API_KEY_FIXTURE: true
+                USE_LOADTEST_PROJECT_FIXTURE: true
                 PYTHONPATH: ${{env.PYTHONPATH}}
                 HOPSWORKS_DOMAIN: hopsworks.glassfish.service.consul
                 HOPSWORKS_PORT: 8182
