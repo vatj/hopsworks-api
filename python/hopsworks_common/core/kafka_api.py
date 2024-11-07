@@ -403,6 +403,42 @@ class KafkaApi:
         replicas: int = 1,
         partitions: int = 1,
     ) -> kafka_topic.KafkaTopic:
+        """
+        Create a notification topic to receive data change events from the onlinefs inserting in the online feature store.
+
+        ```python
+        import hopsworks
+
+        project = hopsworks.login()
+
+        kafka_api = project.get_kafka_api()
+        notification_topic_name = "online_store_data_change_topic"
+
+        notification_topic = kafka_api.create_notification_topic(notification_topic_name)
+
+        fs = project.get_feature_store()
+        my_fg = fs.get_or_create_feature_group(
+            name="my_fg_with_real_time_notification",
+            version=1,
+            primary_key=["id"],
+            online_enabled=True,
+            notification_topic_name=notification_topic_name
+        )
+        ```
+
+        # Arguments
+            name: name of the topic
+            schema: subject name of the schema
+            schema_version: version of the schema
+            replicas: replication factor for the topic
+            partitions: partitions for the topic
+
+        # Returns
+            `KafkaTopic`: The KafkaTopic object
+
+        # Raises
+            `RestAPIError`: If unable to create the topic
+        """
         # schema was kept as variable name to follow naming convention in create_topic
 
         # Should we call the method get_or_create_notification_topic?
