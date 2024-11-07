@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import socket
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 from hopsworks_common import client, constants, kafka_schema, kafka_topic, usage
 from hopsworks_common.client.exceptions import KafkaException
@@ -393,3 +393,42 @@ class KafkaApi:
         ]
         headers = {"content-type": "application/json"}
         return _client._send_request("GET", path_params, headers=headers)
+
+    @usage.method_logger
+    def create_notification_topic(
+        self,
+        name: str,
+        schema: Optional[str] = None,
+        schema_version: int = 1,
+        replicas: int = 1,
+        partitions: int = 1,
+    ) -> kafka_topic.KafkaTopic:
+        # schema was kept as variable name to follow naming convention in create_topic
+
+        # Should we call the method get_or_create_notification_topic?
+        notification_topic_exist = self.get_topic(name)
+        if notification_topic_exist is not None:
+            return notification_topic_exist
+
+        # Check if schema exists if name is provided
+        if schema is not None:
+            schema_exist = self.get_schema(schema, schema_version)
+
+        # If does not exist or schema is not provided, create a new schema
+        if schema_exist is None or schema is None:
+            schema_name = schema or name
+            notification_schema = {
+                key: value
+                for key, value in constants.NOTIFICATION_TOPIC_SCHEMA["v1"].items()
+            }
+            notification_schema["name"] = schema
+
+        self.create_schema(schema_name, notification_schema, schema_version)
+
+        return self.create_topic(
+            name,
+            schema=schema_name,
+            schema_version=schema_version,
+            replicas=replicas,
+            partitions=partitions,
+        )

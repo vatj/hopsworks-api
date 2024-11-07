@@ -85,3 +85,45 @@ polars_not_installed_message = (
 # SQL packages
 HAS_SQLALCHEMY: bool = importlib.util.find_spec("sqlalchemy") is not None
 HAS_AIOMYSQL: bool = importlib.util.find_spec("aiomysql") is not None
+
+# Schema for notification topic
+NOTIFICATION_TOPIC_SCHEMA = dict()
+# Leaving room for future versions of the schema
+# Missing schema name, added on creation
+NOTIFICATION_TOPIC_SCHEMA["v1"] = {
+    "type": "record",
+    "fields": [
+        {"name": "projectId", "type": "int"},
+        {"name": "featureStoreId", "type": "int"},
+        {"name": "featureGroupId", "type": "int"},
+        {"name": "featureGroupName", "type": "string"},
+        {"name": "featureGroupVersion", "type": "int"},
+        {
+            "name": "entry",
+            "type": {
+                "type": "record",
+                "name": "FeatureGroupEntry",
+                "fields": [
+                    {"name": "id", "type": "string"},
+                    {"name": "text", "type": "string"},
+                ],
+            },
+        },
+        {
+            "name": "featureViews",
+            "type": {
+                "type": "array",
+                "items": {
+                    "type": "record",
+                    "name": "FeatureView",
+                    "fields": [
+                        {"name": "id", "type": "int"},
+                        {"name": "name", "type": "string"},
+                        {"name": "version", "type": "int"},
+                        {"name": "featurestoreId", "type": "int"},
+                    ],
+                },
+            },
+        },
+    ],
+}
