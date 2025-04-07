@@ -2479,7 +2479,12 @@ class FeatureGroup(FeatureGroupBase):
             # initialized by user
             # for python engine we always use stream feature group
             if engine.get_type() == "python":
-                self._stream = True
+                if (
+                    not online_enabled and not self._stream
+                ) and time_travel_format is None:
+                    self._time_travel_format = "DELTA"
+                else:
+                    self._stream = True
 
             self.primary_key = primary_key
             self.foreign_key = foreign_key
