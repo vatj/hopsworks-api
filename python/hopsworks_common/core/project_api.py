@@ -153,13 +153,10 @@ class ProjectApi:
         ]
         return _client._send_request("GET", path_params, stream=True)
 
-    def get_project_info(self):
-        _client = client.get_instance()
-        path_params = [
-            "project",
-            "getMoreInfo",
-            "proj",
-            _client._project_id,
-        ]
-        return _client._send_request("GET", path_params)
+    def get_user_info(self):
+        projects = self._get_project_teams()
+        if projects:
+            return projects[0]["user"]
+        else:
+            return {}
 

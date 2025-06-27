@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 
 from hopsworks.core import project_api
 from hopsworks_common import client
-from hopsworks_common.client.exceptions import FeatureStoreException, RestAPIError
+from hopsworks_common.client.exceptions import FeatureStoreException
 from hsfs import feature_group_commit, util
 from hsfs.core import feature_group_api, variable_api
 
@@ -190,10 +190,10 @@ class DeltaEngine:
                 os.environ["HOPSFS_CLOUD_DATANODE_HOSTNAME_OVERRIDE"] = self._variable_api.get_loadbalancer_external_domain("datanode")
             except FeatureStoreException as e:
                 raise FeatureStoreException("Failed to write to delta table in external cluster. Make sure datanode load balancer has been setup on the cluster.") from e
-            try:
-                os.environ["LIBHDFS_DEFAULT_USER"] = self._project_api.get_project_info()["user"]
-            except RestAPIError as e:
-                raise FeatureStoreException("Failed to write to delta table in external cluster. Cannot get user name for project.") from e
+
+            user_name = self._project_api.get_user_info().get("username", None)
+            if not user_name:
+                raise FeatureStoreException("Failed to write to delta table in external cluster. Cannot get user name for project.")
 
     def _get_delta_rs_location(self):
         _client = client.get_instance()
