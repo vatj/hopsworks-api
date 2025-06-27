@@ -15,9 +15,14 @@
 #
 from __future__ import annotations
 
-from hopsworks_common.client.exceptions import FeatureStoreException
+import os
+from urllib.parse import urlparse
+
+from hopsworks.core import project_api
+from hopsworks_common import client
+from hopsworks_common.client.exceptions import FeatureStoreException, RestAPIError
 from hsfs import feature_group_commit, util
-from hsfs.core import feature_group_api
+from hsfs.core import feature_group_api, variable_api
 
 
 try:
@@ -55,6 +60,9 @@ class DeltaEngine:
         self._feature_store_name = feature_store_name
 
         self._feature_group_api = feature_group_api.FeatureGroupApi()
+        self._variable_api = variable_api.VariableApi()
+        self._project_api = project_api.ProjectApi()
+        self._setup_delta_rs()
 
     def save_delta_fg(self, dataset, write_options, validation_id=None):
         if self._spark_session is not None:
@@ -142,7 +150,6 @@ class DeltaEngine:
 
     def _write_delta_dataset(self, dataset, write_options):
         location = self._feature_group.prepare_spark_location()
-
         if write_options is None:
             write_options = {}
 
@@ -175,8 +182,33 @@ class DeltaEngine:
 
         return self._get_last_commit_metadata(self._spark_session, location)
 
+    def _setup_delta_rs(self):
+        _client = client.get_instance()
+        if _client._is_external():
+            os.environ["PEMS_DIR"] = _client.get_certs_folder()
+            try:
+                os.environ["HOPSFS_CLOUD_DATANODE_HOSTNAME_OVERRIDE"] = self._variable_api.get_loadbalancer_external_domain("datanode")
+            except FeatureStoreException as e:
+                raise FeatureStoreException("Failed to write to delta table in external cluster. Make sure datanode load balancer has been setup on the cluster.") from e
+            try:
+                os.environ["LIBHDFS_DEFAULT_USER"] = self._project_api.get_project_info()["user"]
+            except RestAPIError as e:
+                raise FeatureStoreException("Failed to write to delta table in external cluster. Cannot get user name for project.") from e
+
+    def _get_delta_rs_location(self):
+        _client = client.get_instance()
+        if _client._is_external():
+            location = self._feature_group.location.replace("hopsfs", "hdfs")
+            parsed_url = urlparse(location)
+            try:
+                return f"hdfs://{self._variable_api.get_loadbalancer_external_domain('namenode')}:{parsed_url.port}" + parsed_url.path
+            except FeatureStoreException as e:
+                raise FeatureStoreException("Failed to write to delta table. Make sure namenode load balancer has been setup on the cluster.") from e
+        else:
+            return self._feature_group.location
+
     def _write_delta_rs_dataset(self, dataset):
-        location = self._feature_group.location.replace("hopsfs", "hdfs")
+        location = self._get_delta_rs_location()
         if isinstance(dataset, pl.DataFrame):
             dataset = dataset.to_arrow()
         else:
