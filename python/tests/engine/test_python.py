@@ -1530,7 +1530,7 @@ class TestPython:
         assert mock_python_engine_write_dataframe_kafka.call_count == 0
         assert mock_python_engine_legacy_save_dataframe.call_count == 0
         assert mock_delta_engine.call_count == 1
-        
+
         # Verify DeltaEngine was called with correct parameters
         mock_delta_engine.assert_called_once_with(
             fg.feature_store_id,
@@ -1539,7 +1539,7 @@ class TestPython:
             None,
             None,
         )
-        
+
         # Verify save_delta_fg was called with correct parameters
         mock_delta_engine.return_value.save_delta_fg.assert_called_once_with(
             test_dataframe, {}, None
