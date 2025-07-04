@@ -194,6 +194,8 @@ class DeltaEngine:
             user_name = self._project_api.get_user_info().get("username", None)
             if not user_name:
                 raise FeatureStoreException("Failed to write to delta table in external cluster. Cannot get user name for project.")
+            else:
+                os.environ["LIBHDFS_DEFAULT_USER"] = _client.project_name + "__" + user_name
 
     def _get_delta_rs_location(self):
         _client = client.get_instance()

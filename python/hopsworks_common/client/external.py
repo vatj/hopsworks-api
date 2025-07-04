@@ -342,3 +342,7 @@ class Client(base.Client):
     @property
     def host(self):
         return self._host
+
+    @property
+    def project_name(self):
+        return self._project_name
