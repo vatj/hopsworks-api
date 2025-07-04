@@ -120,7 +120,7 @@ class DeltaEngine:
 
         if not is_delta_table:
             raise FeatureStoreException(
-                f"Feature group {self._feature_group.name} is it not DELTA enabled "
+                f"Feature group {self._feature_group.name} is not DELTA enabled "
             )
         else:
             source_alias = (

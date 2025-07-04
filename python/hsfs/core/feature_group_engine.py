@@ -288,6 +288,9 @@ class FeatureGroupEngine(feature_group_base_engine.FeatureGroupBaseEngine):
         if isinstance(engine.get_instance(), engine.spark.Engine):
             spark_session = engine.get_instance()._spark_session
             spark_context = engine.get_instance()._spark_context
+        else:
+            spark_session = None
+            spark_context = None
         if feature_group.time_travel_format == "DELTA":
             delta_engine_instance = delta_engine.DeltaEngine(
                 feature_group.feature_store_id,

@@ -628,6 +628,12 @@ def _serialize_featuregroup_connector(fg, query, on_demand_fg_aliases):
                 connector["filters"] = _serialize_filter_expression(
                     query._filter, query, True
                 )
+            else:
+                for join_obj in query._joins:
+                    if join_obj._query._left_feature_group == fg:
+                        connector["filters"] = _serialize_filter_expression(
+                            join_obj._query._filter, join_obj._query, True
+                        )
         else:
             connector["time_travel_type"] = "delta"
     else:

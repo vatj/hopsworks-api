@@ -2486,6 +2486,12 @@ class FeatureGroup(FeatureGroupBase):
                         self._time_travel_format = "HUDI"
                 else:
                     self._time_travel_format = "HUDI"
+            elif time_travel_format == "HUDI":
+                self._time_travel_format = time_travel_format
+                if engine.get_type() == "python":
+                    self._stream = True
+            else:
+                self._time_travel_format = time_travel_format
 
             self.primary_key = primary_key
             self.foreign_key = foreign_key
