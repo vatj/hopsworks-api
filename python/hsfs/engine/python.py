@@ -818,9 +818,7 @@ class Engine:
                 feature_group, dataframe, offline_write_options
             )
         elif engine.get_type() == "python":
-            if (
-                not online_enabled and not feature_group.stream
-            ) and feature_group.time_travel_format == "DELTA":
+            if feature_group.time_travel_format == "DELTA":
                 delta_engine_instance = delta_engine.DeltaEngine(
                     feature_group.feature_store_id,
                     feature_group.feature_store_name,
