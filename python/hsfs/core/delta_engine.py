@@ -15,7 +15,7 @@
 #
 from __future__ import annotations
 
-import os
+import logging
 from urllib.parse import urlparse
 
 from hopsworks.core import project_api
@@ -26,6 +26,7 @@ from hsfs.core import feature_group_api, variable_api
 
 
 try:
+    import deltalake
     import pandas as pd
     import polars as pl
     import pyarrow as pa
@@ -39,6 +40,8 @@ try:
     from delta.tables import DeltaTable
 except ImportError:
     pass
+
+_logger = logging.getLogger(__name__)
 
 
 class DeltaEngine:
@@ -62,7 +65,7 @@ class DeltaEngine:
         self._feature_group_api = feature_group_api.FeatureGroupApi()
         self._variable_api = variable_api.VariableApi()
         self._project_api = project_api.ProjectApi()
-        self._setup_delta_rs()
+        # self._setup_delta_rs()
 
     def save_delta_fg(self, dataset, write_options, validation_id=None):
         if self._spark_session is not None:
@@ -182,50 +185,129 @@ class DeltaEngine:
 
         return self._get_last_commit_metadata(self._spark_session, location)
 
-    def _setup_delta_rs(self):
-        _client = client.get_instance()
-        if _client._is_external():
-            os.environ["PEMS_DIR"] = _client.get_certs_folder()
-            try:
-                os.environ["HOPSFS_CLOUD_DATANODE_HOSTNAME_OVERRIDE"] = self._variable_api.get_loadbalancer_external_domain("datanode")
-            except FeatureStoreException as e:
-                raise FeatureStoreException("Failed to write to delta table in external cluster. Make sure datanode load balancer has been setup on the cluster.") from e
+    # def _setup_delta_rs(self):
+    #     _client = client.get_instance()
+    #     if _client._is_external():
+    #         os.environ["PEMS_DIR"] = _client.get_certs_folder()
+    #         try:
+    #             os.environ["HOPSFS_CLOUD_DATANODE_HOSTNAME_OVERRIDE"] = self._variable_api.get_loadbalancer_external_domain("datanode")
+    #         except FeatureStoreException as e:
+    #             raise FeatureStoreException("Failed to write to delta table in external cluster. Make sure datanode load balancer has been setup on the cluster.") from e
 
-            user_name = self._project_api.get_user_info().get("username", None)
-            if not user_name:
-                raise FeatureStoreException("Failed to write to delta table in external cluster. Cannot get user name for project.")
-            else:
-                os.environ["LIBHDFS_DEFAULT_USER"] = _client.project_name + "__" + user_name
+    #         user_name = self._project_api.get_user_info().get("username", None)
+    #         if not user_name:
+    #             raise FeatureStoreException("Failed to write to delta table in external cluster. Cannot get user name for project.")
+    #         else:
+    #             os.environ["LIBHDFS_DEFAULT_USER"] = _client.project_name + "__" + user_name
 
     def _get_delta_rs_location(self):
-        _client = client.get_instance()
-        if _client._is_external():
-            location = self._feature_group.location.replace("hopsfs", "hdfs")
-            parsed_url = urlparse(location)
-            try:
-                return f"hdfs://{self._variable_api.get_loadbalancer_external_domain('namenode')}:{parsed_url.port}" + parsed_url.path
-            except FeatureStoreException as e:
-                raise FeatureStoreException("Failed to write to delta table. Make sure namenode load balancer has been setup on the cluster.") from e
+        if self._feature_group.storage_connector is None:
+            _client = client.get_instance()
+            if _client._is_external():
+                location = self._feature_group.location.replace("hopsfs", "hdfs")
+                parsed_url = urlparse(location)
+                _logger.debug(
+                    f"external client: Parsed HDFS location for delta_rs: {str(parsed_url)}"
+                )
+                try:
+                    return (
+                        f"hdfs://{self._variable_api.get_loadbalancer_external_domain('namenode')}:{parsed_url.port}"
+                        + parsed_url.path
+                    )
+                except FeatureStoreException as e:
+                    raise FeatureStoreException(
+                        "Failed to write to delta table. Make sure namenode load balancer has been setup on the cluster."
+                    ) from e
+            else:
+                _logger.debug(
+                    f"internal client: Using internal HDFS location for delta_rs: {self._feature_group.location}"
+                )
+                return self._feature_group.location
+        elif self._feature_group.storage_connector.type == "S3":
+            _logger.debug(
+                f"Managed FG with S3 storage connector: {self._feature_group.storage_connector.name}"
+            )
+            bucket = self._feature_group.storage_connector.bucket
+            if self._feature_group.data_source.path is None:
+                path = f"s3a://{bucket}/{self._feature_group.name}_{self._feature_group.version}"
+            else:
+                if not self._feature_group.data_source.path.startswith(
+                    f"s3a://{bucket}"
+                ):
+                    path = f"s3a://{bucket}/{self._feature_group.data_source.path.lstrip('/')}"
+                else:
+                    path = self._feature_group.data_source.path
+        _logger.debug(f"Delta_rs on S3 location: {path}")
+
+        return path
+
+    def _get_delta_rs_s3_storage_options(self):
+        if (
+            self._feature_group.data_source
+            and self._feature_group.storage_connector.type == "S3"
+        ):
+            connector_options = (
+                self._feature_group.storage_connector.connector_options()
+            )
+            storage_options = {
+                "AWS_ACCESS_KEY_ID": connector_options.get("access_key"),
+                "endpoint_url": connector_options.get("endpoint"),
+                "AWS_REGION": connector_options.get("region"),
+                "AWS_ALLOW_HTTP": "true",
+                "AWS_S3_ADDRESSING_STYLE": "path",
+            }
+            aws_secret_key = connector_options.get("secret_key")
+            _logger.debug(f"Delta_rs S3 storage options: {storage_options}")
+            if aws_secret_key is not None:
+                _logger.debug("Adding secret key to S3 storage options")
+                storage_options["AWS_SECRET_ACCESS_KEY"] = aws_secret_key
+            return storage_options
         else:
-            return self._feature_group.location
+            _logger.debug("No S3 storage options available for this feature group")
+            return None
 
     def _write_delta_rs_dataset(self, dataset):
         location = self._get_delta_rs_location()
+        storage_options = self._get_delta_rs_s3_storage_options()
+
         if isinstance(dataset, pl.DataFrame):
             dataset = dataset.to_arrow()
         else:
             dataset = self._prepare_df_for_delta(dataset)
 
-        try:
-            fg_source_table = DeltaRsTable(location)
-            is_delta_table = True
-        except TableNotFoundError:
-            is_delta_table = False
+        if storage_options is None:
+            try:
+                fg_source_table = DeltaRsTable(location)
+                is_delta_table = True
+            except TableNotFoundError:
+                is_delta_table = False
+        else:
+            try:
+                _logger.debug(
+                    f"Trying to read Delta table from {location} with storage options"
+                )
+                _logger.debug(f"Storage options: {storage_options}")
+                _logger.debug(f"deltalake version: {deltalake.__version__}")
+                fg_source_table = DeltaRsTable(
+                    location, storage_options=storage_options
+                )
+                is_delta_table = True
+            except TableNotFoundError:
+                is_delta_table = False
 
         if not is_delta_table:
-            deltars_write(
-                location, dataset, partition_by=self._feature_group.partition_key
-            )
+            if storage_options is None:
+                deltars_write(
+                    location, dataset, partition_by=self._feature_group.partition_key
+                )
+            else:
+                deltars_write(
+                    location,
+                    dataset,
+                    storage_options=storage_options,
+                    partition_by=self._feature_group.partition_key,
+                )
+
         else:
             source_alias = (
                 f"{self._feature_group.name}_{self._feature_group.version}_source"
@@ -246,7 +328,9 @@ class DeltaEngine:
                 .when_not_matched_insert_all()
                 .execute()
             )
-        return self._get_last_commit_metadata_delta_rs(location)
+        return self._get_last_commit_metadata_delta_rs(
+            location, storage_options=storage_options
+        )
 
     @staticmethod
     def _prepare_df_for_delta(df, timestamp_precision="us"):
@@ -313,8 +397,8 @@ class DeltaEngine:
         return megrge_query_str
 
     @staticmethod
-    def _get_last_commit_metadata_delta_rs(base_path):
-        fg_source_table = DeltaRsTable(base_path)
+    def _get_last_commit_metadata_delta_rs(base_path, storage_options=None):
+        fg_source_table = DeltaRsTable(base_path, storage_options=storage_options)
 
         last_commit = fg_source_table.history()[0]
         version = last_commit["version"]

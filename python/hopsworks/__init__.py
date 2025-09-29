@@ -70,7 +70,7 @@ warnings.formatwarning = hw_formatwarning
 __all__ = ["connection", "udf"]
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s %(levelname)s: %(message)s",
     stream=sys.stdout,
 )
@@ -438,7 +438,11 @@ def _initialize_module_apis():
     _secrets_api = secret_api.SecretsApi()
 
 
-def create_project(name: str, description: Optional[str] = None, feature_store_topic: Optional[str] = None):
+def create_project(
+    name: str,
+    description: Optional[str] = None,
+    feature_store_topic: Optional[str] = None,
+):
     """Create a new project.
 
     !!! warning "Not supported"
