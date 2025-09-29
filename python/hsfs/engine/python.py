@@ -391,6 +391,8 @@ class Engine:
         prefix = "/".join(path_parts)
 
         if storage_connector.session_token is not None:
+            # This is only for AWS IAM role passthrough.
+            # We don't need to set the endpoint_url and region here.
             s3 = boto3.client(
                 "s3",
                 aws_access_key_id=storage_connector.access_key,
@@ -402,6 +404,8 @@ class Engine:
                 "s3",
                 aws_access_key_id=storage_connector.access_key,
                 aws_secret_access_key=storage_connector.secret_key,
+                endpoint_url=storage_connector.arguments.get("fs.s3a.endpoint"),
+                region_name=storage_connector.region
             )
 
         df_list = []

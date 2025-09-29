@@ -44,7 +44,8 @@ PAGES = {
         "project_create": ["hopsworks.create_project"],
         "project_properties": keras_autodoc.get_properties("hopsworks.project.Project"),
         "project_methods": keras_autodoc.get_methods(
-            "hopsworks.project.Project", exclude=EXCLUDE_METHODS + ["get_jobs_api", "get_alerts_api"]
+            "hopsworks.project.Project",
+            exclude=EXCLUDE_METHODS + ["get_jobs_api", "get_alerts_api"],
         ),
     },
     "api/alerts.md": {
@@ -423,6 +424,24 @@ PAGES = {
             "hsfs.validation_report.ValidationReport", exclude=EXCLUDE_METHODS
         ),
     },
+    "api/online_ingestion.md": {
+        "online_ingestion": ["hsfs.core.online_ingestion.OnlineIngestion"],
+        "online_ingestion_properties": keras_autodoc.get_properties(
+            "hsfs.core.online_ingestion.OnlineIngestion"
+        ),
+        "online_ingestion_methods": keras_autodoc.get_methods(
+            "hsfs.core.online_ingestion.OnlineIngestion", exclude=EXCLUDE_METHODS
+        ),
+    },
+    "api/online_ingestion_result.md": {
+        "online_ingestion_result": ["hsfs.core.online_ingestion_result.OnlineIngestionResult"],
+        "online_ingestion_result_properties": keras_autodoc.get_properties(
+            "hsfs.core.online_ingestion_result.OnlineIngestionResult"
+        ),
+        "online_ingestion_result_methods": keras_autodoc.get_methods(
+            "hsfs.core.online_ingestion_result.OnlineIngestionResult", exclude=EXCLUDE_METHODS
+        ),
+    },
     "api/query_api.md": {
         "query_methods": keras_autodoc.get_methods(
             "hsfs.constructor.query.Query",
@@ -554,6 +573,43 @@ PAGES = {
     },
     "api/similarity_function_type_api.md": {
         "similarity_function_type": ["hsfs.embedding.SimilarityFunctionType"],
+    },
+    "api/search.md": {
+        "search_api_handle": ["hopsworks.project.Project.get_search_api"],
+        "search_methods": keras_autodoc.get_methods(
+            "hopsworks.core.search_api.SearchApi", exclude=EXCLUDE_METHODS
+        ),
+        "featurestoreSearchResult_properties": keras_autodoc.get_properties(
+            "hopsworks_common.search_results.FeaturestoreSearchResult"
+        ),
+        "featureGroupSearchResult_properties": keras_autodoc.get_properties(
+            "hopsworks_common.search_results.FeatureGroupSearchResult"
+        ),
+        "featureViewSearchResult_properties": keras_autodoc.get_properties(
+            "hopsworks_common.search_results.FeatureViewSearchResult"
+        ),
+        "trainingDatasetSearchResult_properties": keras_autodoc.get_properties(
+            "hopsworks_common.search_results.TrainingDatasetSearchResult"
+        ),
+        "featureSearchResult_properties": keras_autodoc.get_properties(
+            "hopsworks_common.search_results.FeatureSearchResult"
+        ),
+        "featureGroupResult_methods": keras_autodoc.get_methods(
+            "hopsworks_common.search_results.FeatureGroupResult",
+            exclude=EXCLUDE_METHODS,
+        ),
+        "featureViewResult_methods": keras_autodoc.get_methods(
+            "hopsworks_common.search_results.FeatureViewResult",
+            exclude=EXCLUDE_METHODS,
+        ),
+        "trainingDatasetResult_methods": keras_autodoc.get_methods(
+            "hopsworks_common.search_results.TrainingDatasetResult",
+            exclude=EXCLUDE_METHODS,
+        ),
+        "featureResult_methods": keras_autodoc.get_methods(
+            "hopsworks_common.search_results.FeatureResult",
+            exclude=EXCLUDE_METHODS,
+        ),
     },
     # Model registry
     "model-registry/model_registry_api.md": {

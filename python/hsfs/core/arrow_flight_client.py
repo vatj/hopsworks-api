@@ -125,13 +125,17 @@ def _is_query_supported_rec(query: query.Query):
         and query._left_feature_group.storage_connector.type
         in ArrowFlightClient.SUPPORTED_EXTERNAL_CONNECTORS
     )
-    delta_s3 = (
+    delta_data_sources = (
         isinstance(query._left_feature_group, feature_group.FeatureGroup)
         and query._left_feature_group.time_travel_format == "DELTA"
         and query._left_feature_group.storage_connector
-        and query._left_feature_group.storage_connector.type == StorageConnector.S3
+        and (
+            query._left_feature_group.storage_connector.type == StorageConnector.S3
+            or query._left_feature_group.storage_connector.type == StorageConnector.GCS
+        )
     )
-    supported = hudi_no_time_travel or supported_connector or delta_s3
+
+    supported = hudi_no_time_travel or supported_connector or delta_data_sources
     for j in query._joins:
         supported &= _is_query_supported_rec(j._query)
     return supported
@@ -153,6 +157,7 @@ class ArrowFlightClient:
         StorageConnector.BIGQUERY,
         StorageConnector.REDSHIFT,
         StorageConnector.RDS,
+        StorageConnector.GCS,
     ]
     READ_ERROR = "Could not read data using Hopsworks Query Service."
     WRITE_ERROR = 'Could not write data using Hopsworks Query Service. If the issue persists, use write_options={"use_spark": True} instead.'
@@ -182,6 +187,8 @@ class ArrowFlightClient:
 
         self._client = client.get_instance()
         self._variable_api: VariableApi = VariableApi()
+        self._service_discovery_domain = self._variable_api.get_service_discovery_domain()
+
         self._certificates_json: Optional[str] = None
 
         try:
@@ -246,13 +253,12 @@ class ArrowFlightClient:
             )
             host_url = f"grpc+tls://{external_domain}:5005"
         else:
-            service_discovery_domain = self._variable_api.get_service_discovery_domain()
-            if service_discovery_domain == "":
+            if self._service_discovery_domain == "":
                 raise FeatureStoreException(
                     "Client could not get Hopsworks Query Service hostname from service_discovery_domain. "
                     "The variable is either not set or empty in Hopsworks cluster configuration."
                 )
-            host_url = f"grpc+tls://flyingduck.service.{service_discovery_domain}:5005"
+            host_url = f"grpc+tls://flyingduck.service.{self._service_discovery_domain}:5005"
         _logger.debug(f"Connecting to Hopsworks Query Service on host {host_url}")
         return host_url
 
@@ -285,7 +291,7 @@ class ArrowFlightClient:
             tls_root_certs=tls_root_certs,
             cert_chain=cert_chain,
             private_key=private_key,
-            override_hostname="flyingduck.service.consul",
+            override_hostname=f"flyingduck.service.{self._service_discovery_domain}",
             generic_options=[
                 (
                     # https://arrow.apache.org/docs/cpp/flight.html#excessive-traffic
@@ -705,6 +711,11 @@ def _get_connector_options(fg):
         if connector.arguments.get("fs.s3a.endpoint"):
             option_map["endpoint"] = connector.arguments.get("fs.s3a.endpoint")
         option_map["path"] = fg.location
+    elif connector_type == StorageConnector.GCS:
+        option_map = {
+            "key_path": connector.key_path,
+            "path": fg.location,
+        }
     else:
         raise FeatureStoreException(
             f"Arrow Flight doesn't support connector of type: {connector_type}"

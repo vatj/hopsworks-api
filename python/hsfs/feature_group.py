@@ -20,7 +20,7 @@ import json
 import logging
 import time
 import warnings
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import (
     Any,
     Dict,
@@ -149,8 +149,36 @@ class FeatureGroupBase:
             ]
         ] = None,
         storage_connector: Union[sc.StorageConnector, Dict[str, Any]] = None,
+        ttl: Optional[Union[int, float, timedelta]] = None,
+        ttl_enabled: Optional[bool] = None,
+        online_disk: Optional[bool] = None,
         **kwargs,
     ) -> None:
+        """Initialize a feature group object.
+
+        # Arguments
+            name: Name of the feature group to create
+            version: Version number of the feature group
+            featurestore_id: ID of the feature store to create the feature group in
+            location: Location to store the feature group data
+            event_time: Event time column for the feature group
+            online_enabled: Whether to enable online serving for this feature group
+            id: ID of the feature group
+            embedding_index: Embedding index configuration for vector similarity search
+            expectation_suite: Great Expectations suite for data validation
+            online_topic_name: Name of the Kafka topic for online serving
+            topic_name: Name of the Kafka topic for streaming
+            notification_topic_name: Name of the Kafka topic for notifications
+            deprecated: Whether this feature group is deprecated
+            online_config: Configuration for online serving
+            data_source: Data source configuration
+            storage_connector: Storage connector configuration
+            ttl: Time-to-live (TTL) configuration for this feature group
+            ttl_enabled: Whether to enable time-to-live (TTL) for this feature group. Defaults to True if ttl is set.
+            online_disk: Whether to enable online disk storage for this feature group. Overrides online_config.table_space.
+                Defaults to using cluster wide configuration 'featurestore_online_tablespace' to identify tablespace for disk storage.
+            **kwargs: Additional keyword arguments
+        """
         self._version = version
         self._name = name
         self.event_time = event_time
@@ -166,6 +194,8 @@ class FeatureGroupBase:
         self._feature_store = None
         self._variable_api: VariableApi = VariableApi()
         self._alert_api = alerts_api.AlertsApi()
+        self.ttl = ttl
+        self._ttl_enabled = ttl_enabled if ttl_enabled is not None else ttl is not None
 
         if storage_connector is not None and isinstance(storage_connector, dict):
             self._storage_connector = sc.StorageConnector.from_response_json(
@@ -178,6 +208,16 @@ class FeatureGroupBase:
             if isinstance(online_config, dict)
             else online_config
         )
+        if online_disk is not None:
+            if self._online_config is None:
+                # Make sure online config is initialized
+                self._online_config = OnlineConfig()
+
+            if online_disk:
+                self._online_config.table_space = self._variable_api.get_featurestore_online_tablespace()
+            else:
+                # An empty string is interpreted as don't set table space, while None uses the cluster default
+                self._online_config.table_space = ""
 
         if data_source:
             self._data_source = (
@@ -1842,11 +1882,50 @@ class FeatureGroupBase:
             )
 
     def get_latest_online_ingestion(self) -> online_ingestion.OnlineIngestion:
+        """
+        Retrieve the latest online ingestion operation for this feature group.
+
+        This method fetches metadata about the most recent online ingestion job,
+        including its status and progress, if available.
+
+        # Returns
+            `OnlineIngestion`: The latest OnlineIngestion object for this feature group.
+
+        # Raises
+            `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request.
+
+        !!! example
+            ```python
+            fg = fs.get_feature_group("my_fg", 1)
+            latest_ingestion = fg.get_latest_online_ingestion()
+            ```
+        """
         return online_ingestion_api.OnlineIngestionApi().get_online_ingestion(
             self, query_params={"filter_by": "LATEST"}
         )
 
     def get_online_ingestion(self, id) -> online_ingestion.OnlineIngestion:
+        """
+        Retrieve a specific online ingestion operation by its ID for this feature group.
+
+        This method fetches metadata about a particular online ingestion job,
+        including its status and progress, if available.
+
+        # Arguments
+            id: The unique identifier of the online ingestion operation.
+
+        # Returns
+            `OnlineIngestion`: The OnlineIngestion object with the specified ID.
+
+        # Raises
+            `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request.
+
+        !!! example
+            ```python
+            fg = fs.get_feature_group("my_fg", 1)
+            ingestion = fg.get_online_ingestion(123)
+            ```
+        """
         return online_ingestion_api.OnlineIngestionApi().get_online_ingestion(
             self, query_params={"filter_by": f"ID:{id}"}
         )
@@ -2344,6 +2423,128 @@ class FeatureGroupBase:
     def _get_project_name(self) -> str:
         return util.strip_feature_store_suffix(self.feature_store_name)
 
+    @property
+    def ttl(self) -> Optional[int]:
+        """Get the time-to-live duration in seconds for features in this group.
+
+        The TTL determines how long features should be retained before being automatically removed.
+        The value is always returned in seconds, regardless of how it was originally specified.
+
+        # Returns
+            int: The TTL value in seconds, or None if no TTL is set.
+        """
+        return self._ttl
+
+    @ttl.setter
+    def ttl(self, new_ttl: Optional[Union[int, float, timedelta]]) -> None:
+        """Set the time-to-live duration for features in this group.
+
+        # Arguments
+            new_ttl: The new TTL value. Can be specified as:
+                - An integer or float representing seconds
+                - A timedelta object
+                - None to remove TTL
+
+        The value will be stored internally in seconds.
+        """
+        if new_ttl is not None:
+            if isinstance(new_ttl, timedelta):
+                self._ttl = int(new_ttl.total_seconds())
+            else:
+                self._ttl = int(new_ttl)
+        else:
+            self._ttl = None
+
+    @property
+    def ttl_enabled(self) -> bool:
+        """Get whether TTL (time-to-live) is enabled for this feature group.
+
+        # Returns
+            bool: True if TTL is enabled, False otherwise
+        """
+        return self._ttl_enabled
+
+    @ttl_enabled.setter
+    def ttl_enabled(self, enabled: bool) -> None:
+        """Set whether TTL (time-to-live) is enabled for this feature group.
+
+        # Arguments
+            enabled: Boolean indicating whether TTL should be enabled
+        """
+        self._ttl_enabled = enabled
+
+    def enable_ttl(
+        self,
+        ttl: Optional[Union[int, float, timedelta]] = None,
+    ) -> Union[FeatureGroupBase, FeatureGroup, ExternalFeatureGroup, SpineGroup]:
+        """Enable or update the time-to-live (TTL) configuration of the feature group.
+        If ttl is not set, the feature group will be enabled with the last TTL value being set.
+
+        !!! example
+            ```python
+            # connect to the Feature Store
+            fs = ...
+
+            # get the Feature Group instance
+            fg = fs.get_or_create_feature_group(...)
+
+            # Enable TTL with a TTL of 7 days
+            fg.enable_ttl(timedelta(days=7))
+
+            # Disable TTL
+            fg.disable_ttl()
+
+            # Enable TTL again with a TTL of 7 days
+            fg.enable_ttl()
+            ```
+
+        !!! info "Safe update"
+            This method updates the TTL configuration safely. In case of failure
+            your local metadata object will keep the old configuration.
+
+        # Arguments
+            ttl: Optional new TTL value. Can be specified as:
+                - An integer or float representing seconds
+                - A timedelta object
+                - None to keep current value
+
+        # Returns
+            `FeatureGroup`. The updated feature group object.
+
+        # Raises
+            `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request
+        """
+        self._feature_group_engine.update_ttl(self, ttl, True)
+        return self
+
+    def disable_ttl(self) -> "FeatureGroup":
+        """Disable the time-to-live (TTL) configuration of the feature group.
+
+        !!! example
+            ```python
+            # connect to the Feature Store
+            fs = ...
+
+            # get the Feature Group instance
+            fg = fs.get_or_create_feature_group(...)
+
+            # Disable TTL
+            fg.disable_ttl()
+            ```
+
+        !!! info "Safe update"
+            This method updates the TTL configuration safely. In case of failure
+            your local metadata object will keep the old configuration.
+
+        # Returns
+            `FeatureGroup`. The updated feature group object.
+
+        # Raises
+            `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request
+        """
+        self._feature_group_engine.update_ttl(self, None, False)
+        return self
+
 
 @typechecked
 class FeatureGroup(FeatureGroupBase):
@@ -2406,6 +2607,9 @@ class FeatureGroup(FeatureGroupBase):
                 Dict[str, Any],
             ]
         ] = None,
+        ttl: Optional[Union[int, float, timedelta]] = None,
+        ttl_enabled: Optional[bool] = None,
+        online_disk: Optional[bool] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -2425,7 +2629,11 @@ class FeatureGroup(FeatureGroupBase):
             online_config=online_config,
             storage_connector=storage_connector,
             data_source=data_source,
+            ttl=ttl,
+            ttl_enabled=ttl_enabled,
+            online_disk=online_disk,
         )
+
         self._feature_store_name: Optional[str] = featurestore_name
         self._description: Optional[str] = description
         self._created = created
@@ -3381,7 +3589,7 @@ class FeatureGroup(FeatureGroupBase):
                 written to the sink every time there is some update. (3) `"update"`:
                 only the rows that were updated in the streaming DataFrame/Dataset will
                 be written to the sink every time there are some updates.
-                If the query doesn’t contain aggregations, it will be equivalent to
+                If the query doesn't contain aggregations, it will be equivalent to
                 append mode. Defaults to `"append"`.
             await_termination: Waits for the termination of this query, either by
                 query.stop() or by an exception. If the query has terminated with an
@@ -3821,6 +4029,8 @@ class FeatureGroup(FeatureGroupBase):
             "transformationFunctions": [
                 tf.to_dict() for tf in self._transformation_functions
             ],
+            "ttl": self.ttl,
+            "ttlEnabled": self._ttl_enabled,
         }
         if self._data_source:
             fg_meta_dict["dataSource"] = self._data_source.to_dict()
@@ -4059,6 +4269,9 @@ class ExternalFeatureGroup(FeatureGroupBase):
                 Dict[str, Any],
             ]
         ] = None,
+        ttl: Optional[Union[int, float, timedelta]] = None,
+        ttl_enabled: Optional[bool] = None,
+        online_disk: Optional[bool] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -4078,6 +4291,9 @@ class ExternalFeatureGroup(FeatureGroupBase):
             online_config=online_config,
             storage_connector=storage_connector,
             data_source=data_source,
+            ttl=ttl,
+            ttl_enabled=ttl_enabled,
+            online_disk=online_disk,
         )
 
         self._feature_store_name = featurestore_name
@@ -4495,6 +4711,8 @@ class ExternalFeatureGroup(FeatureGroupBase):
             "topicName": self.topic_name,
             "notificationTopicName": self.notification_topic_name,
             "deprecated": self.deprecated,
+            "ttl": self.ttl,
+            "ttlEnabled": self._ttl_enabled,
         }
         if self._data_source:
             fg_meta_dict["dataSource"] = self._data_source.to_dict()
@@ -4589,6 +4807,7 @@ class SpineGroup(FeatureGroupBase):
                 Dict[str, Any],
             ]
         ] = None,
+        online_disk: Optional[bool] = None,
         **kwargs,
     ) -> None:
         super().__init__(
@@ -4605,6 +4824,7 @@ class SpineGroup(FeatureGroupBase):
             deprecated=deprecated,
             online_config=online_config,
             data_source=data_source,
+            online_disk=online_disk,
         )
 
         self._feature_store_name = featurestore_name
