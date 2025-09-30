@@ -249,12 +249,14 @@ class DeltaEngine:
             connector_options = (
                 self._feature_group.storage_connector.connector_options()
             )
+            extra_args = self._feature_group.storage_connector.arguments
+            endpoint_url = f"{'http' if extra_args.get('allow_http', False) else 'https'}://{connector_options.get('endpoint', None)}"
             storage_options = {
                 "AWS_ACCESS_KEY_ID": connector_options.get("access_key"),
-                "endpoint_url": connector_options.get("endpoint"),
+                "endpoint_url": endpoint_url,
                 "AWS_REGION": connector_options.get("region"),
-                "AWS_ALLOW_HTTP": "true",
-                "AWS_S3_ADDRESSING_STYLE": "path",
+                "AWS_ALLOW_HTTP": extra_args.get("allow_http", "false"),
+                "AWS_S3_ADDRESSING_STYLE": extra_args.get("addressing_style", "path"),
             }
             aws_secret_key = connector_options.get("secret_key")
             _logger.debug(f"Delta_rs S3 storage options: {storage_options}")
@@ -331,6 +333,18 @@ class DeltaEngine:
         return self._get_last_commit_metadata_delta_rs(
             location, storage_options=storage_options
         )
+
+    # def _read_delta_rs_dataset(self):
+    #     location = self._get_delta_rs_location()
+    #     storage_options = self._get_delta_rs_s3_storage_options()
+
+    #     if storage_options is None:
+    #         fg_source_table = DeltaRsTable(location)
+    #     else:
+    #         fg_source_table = DeltaRsTable(location, storage_options=storage_options)
+
+    #     df = fg_source_table.to_pandas()
+    #     return df
 
     @staticmethod
     def _prepare_df_for_delta(df, timestamp_precision="us"):

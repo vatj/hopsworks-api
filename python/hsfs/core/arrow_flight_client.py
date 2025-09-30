@@ -187,7 +187,9 @@ class ArrowFlightClient:
 
         self._client = client.get_instance()
         self._variable_api: VariableApi = VariableApi()
-        self._service_discovery_domain = self._variable_api.get_service_discovery_domain()
+        self._service_discovery_domain = (
+            self._variable_api.get_service_discovery_domain()
+        )
 
         self._certificates_json: Optional[str] = None
 
@@ -258,7 +260,9 @@ class ArrowFlightClient:
                     "Client could not get Hopsworks Query Service hostname from service_discovery_domain. "
                     "The variable is either not set or empty in Hopsworks cluster configuration."
                 )
-            host_url = f"grpc+tls://flyingduck.service.{self._service_discovery_domain}:5005"
+            host_url = (
+                f"grpc+tls://flyingduck.service.{self._service_discovery_domain}:5005"
+            )
         _logger.debug(f"Connecting to Hopsworks Query Service on host {host_url}")
         return host_url
 
@@ -708,9 +712,23 @@ def _get_connector_options(fg):
             "session_token": connector.session_token,
             "region": connector.region,
         }
-        if connector.arguments.get("fs.s3a.endpoint"):
-            option_map["endpoint"] = connector.arguments.get("fs.s3a.endpoint")
+        endpoint = connector.arguments.get("fs.s3a.endpoint")
+        if endpoint:
+            if endpoint.startswith("http://"):
+                option_map["endpoint"] = endpoint[7:]
+                option_map["use_ssl"] = "false"
+            elif endpoint.startswith("https://"):
+                option_map["endpoint"] = endpoint[8:]
+                option_map["use_ssl"] = "true"
+            else:
+                option_map["endpoint"] = endpoint
+                option_map["use_ssl"] = not connector.arguments.get(
+                    "allow_http", "false"
+                )
+        else:
+            option_map["use_ssl"] = "true"
         option_map["path"] = fg.location
+        option_map["addressing_style"] = connector.arguments.get("addressing_style")
     elif connector_type == StorageConnector.GCS:
         option_map = {
             "key_path": connector.key_path,
