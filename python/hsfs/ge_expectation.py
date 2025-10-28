@@ -43,6 +43,7 @@ class GeExpectation:
         type: Optional[str] = None,
         id: Optional[int] = None,
         href: Optional[str] = None,
+        **keywargs,
     ):
         self._id = id
         self._href = href
