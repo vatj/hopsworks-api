@@ -216,7 +216,7 @@ class ExpectationSuite:
     def to_ge_type(self) -> great_expectations.core.ExpectationSuite:
         return great_expectations.core.ExpectationSuite(
             name=self._expectation_suite_name,
-            ge_cloud_id=self._ge_cloud_id,
+            id=self._ge_cloud_id,
             data_asset_type=self._data_asset_type,
             expectations=[
                 expectation.to_ge_type() for expectation in self._expectations
