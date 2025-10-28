@@ -363,7 +363,9 @@ class Engine:
                             dataframe_type=dataframe_type,
                         )
                     else:
-                        content_stream = self._dataset_api.read_content(inode_entry.path)
+                        content_stream = self._dataset_api.read_content(
+                            inode_entry.path
+                        )
                         if dataframe_type.lower() == "polars":
                             df = self._read_polars(
                                 data_format, BytesIO(content_stream.content)
@@ -406,7 +408,7 @@ class Engine:
                 aws_access_key_id=storage_connector.access_key,
                 aws_secret_access_key=storage_connector.secret_key,
                 endpoint_url=storage_connector.arguments.get("fs.s3a.endpoint"),
-                region_name=storage_connector.region
+                region_name=storage_connector.region,
             )
 
         df_list = []
@@ -690,9 +692,10 @@ class Engine:
             dataframe = dataframe.to_pandas()
         if ge_validate_kwargs is None:
             ge_validate_kwargs = {}
-        report = great_expectations.from_pandas(
-            dataframe, expectation_suite=expectation_suite
-        ).validate(**ge_validate_kwargs)
+        context = great_expectations.get_context(mode="ephemeral")
+        report = context.data_sources.pandas_default.read_dataframe(
+            dataframe=dataframe
+        ).validate(expect=expectation_suite)
         return report
 
     def set_job_group(self, group_id: str, description: Optional[str]) -> None:

@@ -1219,7 +1219,7 @@ class FeatureGroupBase:
             `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request
         """
         if HAS_GREAT_EXPECTATIONS and isinstance(
-            expectation_suite, great_expectations.core.ExpectationSuite
+            expectation_suite, great_expectations.ExpectationSuite
         ):
             tmp_expectation_suite = (
                 hsfs.expectation_suite.ExpectationSuite.from_ge_type(

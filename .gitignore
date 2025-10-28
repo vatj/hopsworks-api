@@ -145,3 +145,5 @@ gcs.json
 # Dev directories
 dev_tools/
 dev_scripts/
+
+python/uv.lock
