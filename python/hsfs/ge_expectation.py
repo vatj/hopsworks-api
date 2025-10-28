@@ -116,7 +116,7 @@ class GeExpectation:
     @uses_great_expectations
     def to_ge_type(self) -> Expectation:
         return ExpectationConfiguration(
-            expectation_type=self.expectation_type, kwargs=self.kwargs, meta=self.meta
+            type=self.expectation_type, kwargs=self.kwargs, meta=self.meta
         )
 
     @property
