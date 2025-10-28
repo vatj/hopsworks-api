@@ -29,7 +29,9 @@ from hsfs.decorators import uses_great_expectations
 
 
 if HAS_GREAT_EXPECTATIONS:
-    from great_expectations.expectations import Expectation
+    from great_expectations.expectations.expectation_configuration import (
+        ExpectationConfiguration,
+    )
 
 
 class GeExpectation:
@@ -75,7 +77,7 @@ class GeExpectation:
 
     @classmethod
     def from_ge_type(cls, ge_expectation: Expectation):
-        return cls(**ge_expectation.to_json_dict())
+        return cls(**ge_expectation.configuration)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -113,8 +115,8 @@ class GeExpectation:
 
     @uses_great_expectations
     def to_ge_type(self) -> Expectation:
-        return Expectation(
-            type=self.expectation_type, kwargs=self.kwargs, meta=self.meta
+        return ExpectationConfiguration(
+            expectation_type=self.expectation_type, kwargs=self.kwargs, meta=self.meta
         )
 
     @property
