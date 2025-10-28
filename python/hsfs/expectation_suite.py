@@ -48,7 +48,6 @@ class ExpectationSuite:
 
     def __init__(
         self,
-        expectation_suite_name: str,
         expectations: List[
             Union[
                 great_expectations.core.ExpectationConfiguration,
@@ -57,6 +56,8 @@ class ExpectationSuite:
             ]
         ],
         meta: Dict[str, Any],
+        expectation_suite_name: Optional[str] = None,
+        name: Optional[str] = None,
         id: Optional[int] = None,
         run_validation: bool = True,
         validation_ingestion_policy: Literal["always", " strict"] = "always",
@@ -66,7 +67,7 @@ class ExpectationSuite:
         **kwargs,
     ) -> None:
         self._id = id
-        self._expectation_suite_name = expectation_suite_name
+        self._expectation_suite_name = expectation_suite_name or name or ""
         self._ge_cloud_id = kwargs.get("ge_cloud_id", None)
         self._data_asset_type = kwargs.get("data_asset_type", None)
         self._run_validation = run_validation
