@@ -20,9 +20,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 
 if TYPE_CHECKING:
-    from great_expectations.expectations.expectation_configuration import (
-        ExpectationConfiguration,
-    )
+    from great_expectations.expectations import Expectation
 
 import humps
 from hsfs import util
@@ -31,9 +29,7 @@ from hsfs.decorators import uses_great_expectations
 
 
 if HAS_GREAT_EXPECTATIONS:
-    from great_expectations.expectations.expectation_configuration import (
-        ExpectationConfiguration,
-    )
+    from great_expectations.expectations import Expectation
 
 
 class GeExpectation:
@@ -76,7 +72,7 @@ class GeExpectation:
             return cls(**json_decamelized)
 
     @classmethod
-    def from_ge_type(cls, ge_expectation: ExpectationConfiguration):
+    def from_ge_type(cls, ge_expectation: Expectation):
         return cls(**ge_expectation.to_json_dict())
 
     def to_dict(self) -> Dict[str, Any]:
@@ -114,8 +110,8 @@ class GeExpectation:
         )
 
     @uses_great_expectations
-    def to_ge_type(self) -> ExpectationConfiguration:
-        return ExpectationConfiguration(
+    def to_ge_type(self) -> Expectation:
+        return Expectation(
             type=self.expectation_type, kwargs=self.kwargs, meta=self.meta
         )
 

@@ -70,12 +70,10 @@ class TestGeExpectation:
 
         # Arrange
         expectationId = 32
-        expectation_type = "expect_column_min_to_be_between"
-        kwargs = {"kwargs_key": "kwargs_value"}
         meta = {"meta_key": "meta_value", "expectationId": expectationId}
-        ge_object = great_expectations.core.ExpectationConfiguration(
-            expectation_type=expectation_type,
-            kwargs=kwargs,
+        ge_object = great_expectations.expectations.ExpectColumnMinToBeBetween(
+            column="column_name",
+            min_value=0,
             meta=meta,
         )
 
@@ -84,6 +82,6 @@ class TestGeExpectation:
 
         # Assert
         assert expect.id == 32
-        assert expect.expectation_type == expectation_type
-        assert expect.kwargs == kwargs
+        assert expect.expectation_type == "expect_column_min_to_be_between"
+        assert expect.kwargs == {"column": "column_name", "min_value": 0}
         assert expect.meta == meta

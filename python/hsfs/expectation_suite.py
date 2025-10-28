@@ -50,7 +50,7 @@ class ExpectationSuite:
         self,
         expectations: List[
             Union[
-                great_expectations.core.ExpectationConfiguration,
+                great_expectations.expectations.Expectation,
                 Dict[str, Any],
                 GeExpectation,
             ]
@@ -273,7 +273,7 @@ class ExpectationSuite:
         self,
         expectation: Union[
             GeExpectation,
-            great_expectations.core.ExpectationConfiguration,
+            great_expectations.expectations.Expectation,
             Dict[str, Any],
         ],
     ) -> GeExpectation:
@@ -290,7 +290,7 @@ class ExpectationSuite:
             `TypeError`
         """
         if HAS_GREAT_EXPECTATIONS and isinstance(
-            expectation, great_expectations.core.ExpectationConfiguration
+            expectation, great_expectations.expectations.Expectation
         ):
             return GeExpectation(**expectation.to_json_dict())
         elif isinstance(expectation, GeExpectation):
@@ -304,7 +304,7 @@ class ExpectationSuite:
 
     def get_expectation(
         self, expectation_id: int, ge_type: bool = HAS_GREAT_EXPECTATIONS
-    ) -> Union[GeExpectation, great_expectations.core.ExpectationConfiguration]:
+    ) -> Union[GeExpectation, great_expectations.expectations.Expectation]:
         """
         Fetch expectation with expectation_id from the backend.
 
@@ -344,11 +344,9 @@ class ExpectationSuite:
 
     def add_expectation(
         self,
-        expectation: Union[
-            GeExpectation, great_expectations.core.ExpectationConfiguration
-        ],
+        expectation: Union[GeExpectation, great_expectations.expectations.Expectation],
         ge_type: bool = HAS_GREAT_EXPECTATIONS,
-    ) -> Union[GeExpectation, great_expectations.core.ExpectationConfiguration]:
+    ) -> Union[GeExpectation, great_expectations.expectations.Expectation]:
         """
         Append an expectation to the local suite or in the backend if attached to a Feature Group.
 
@@ -407,11 +405,9 @@ class ExpectationSuite:
 
     def replace_expectation(
         self,
-        expectation: Union[
-            GeExpectation, great_expectations.core.ExpectationConfiguration
-        ],
+        expectation: Union[GeExpectation, great_expectations.expectations.Expectation],
         ge_type: bool = HAS_GREAT_EXPECTATIONS,
-    ) -> Union[GeExpectation, great_expectations.core.ExpectationConfiguration]:
+    ) -> Union[GeExpectation, great_expectations.expectations.Expectation]:
         """
         Update an expectation from the suite locally or from the backend if attached to a Feature Group.
 
@@ -582,7 +578,7 @@ class ExpectationSuite:
     def expectations(
         self,
         expectations: Union[
-            List[great_expectations.core.ExpectationConfiguration],
+            List[great_expectations.expectations.Expectation],
             List[GeExpectation],
             List[dict],
             None,
