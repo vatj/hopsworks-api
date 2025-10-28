@@ -37,15 +37,16 @@ class GeExpectation:
 
     def __init__(
         self,
-        expectation_type: str,
         kwargs: Dict[str, Any],
         meta: Dict[str, Any],
+        expectation_type: Optional[str] = None,
+        type: Optional[str] = None,
         id: Optional[int] = None,
         href: Optional[str] = None,
     ):
         self._id = id
         self._href = href
-        self._expectation_type = expectation_type
+        self._expectation_type = expectation_type or type or ""
         self.kwargs = kwargs
         self.meta = meta
 
