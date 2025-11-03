@@ -77,7 +77,7 @@ class GeExpectation:
 
     @classmethod
     def from_ge_type(cls, ge_expectation: Expectation):
-        return cls(**ge_expectation.configuration)
+        return cls(**ge_expectation.dict())
 
     def to_dict(self) -> Dict[str, Any]:
         return {
