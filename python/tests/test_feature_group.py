@@ -1029,10 +1029,10 @@ class TestFeatureGroup:
             # time_travel_format=None cases (resolved by flags)
             (None, False, False, True, "HUDI"),  # Non-HopsFS & Online -> HUDI
             (None, False, False, False, "HUDI"),  # Non-HopsFS & Offline -> HUDI
-            (None, False, True, True, "HUDI"),  # Non-HopsFS & Online -> HUDI
-            (None, False, True, False, "HUDI"),  # Non-HopsFS & Offline -> HUDI
+            (None, False, True, True, "DELTA"),  # Non-HopsFS & Online -> HUDI
+            (None, False, True, False, "DELTA"),  # Non-HopsFS & Offline -> HUDI
             (None, True, False, True, "HUDI"),  # HopsFS & Online -> HUDI
-            (None, True, True, True, "HUDI"),  # HopsFS & Online -> HUDI
+            (None, True, True, True, "DELTA"),  # HopsFS & Online -> HUDI
             (
                 None,
                 True,
@@ -1102,6 +1102,29 @@ class TestFeatureGroup:
             online_enabled=online_enabled,
         )
         assert result is expected
+
+    def test_embedding_index_forces_online_enabled(self, mocker):
+        # Arrange
+        mocker.patch("hsfs.engine.get_type", return_value="python")
+
+        # Act
+        fg = feature_group.FeatureGroup(
+            name="test_fg",
+            version=1,
+            featurestore_id=99,
+            primary_key=[],
+            foreign_key=[],
+            partition_key=[],
+            embedding_index=hsfs.embedding.EmbeddingIndex(
+                index_name="test_index",
+                features=[hsfs.embedding.EmbeddingFeature("emb_feat", 128)],
+            ),
+            online_enabled=False,
+        )
+
+        # Assert
+        assert fg.online_enabled is True
+        assert fg.stream is True
 
 
 class TestExternalFeatureGroup:
