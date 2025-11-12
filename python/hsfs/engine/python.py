@@ -964,7 +964,11 @@ class Engine:
                     None,
                     None,
                 )
-                delta_engine_instance.save_delta_fg(dataframe, {}, validation_id)
+                delta_engine_instance.save_delta_fg(
+                    dataframe,
+                    write_options=offline_write_options,
+                    validation_id=validation_id,
+                )
         else:
             # for backwards compatibility
             return self.legacy_save_dataframe(

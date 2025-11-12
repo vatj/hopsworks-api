@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 from hopsworks.core import project_api
@@ -65,7 +66,12 @@ class DeltaEngine:
         self._project_api = project_api.ProjectApi()
         self._setup_delta_rs()
 
-    def save_delta_fg(self, dataset, write_options, validation_id=None):
+    def save_delta_fg(
+        self,
+        dataset,
+        write_options: Optional[Dict[str, Any]] = None,
+        validation_id=None,
+    ):
         if self._spark_session is not None:
             _logger.debug(
                 f"Saving Delta dataset using spark to feature group {self._feature_group.name} v{self._feature_group.version}"
@@ -75,11 +81,27 @@ class DeltaEngine:
             _logger.debug(
                 f"Saving Delta dataset using delta-rs to feature group {self._feature_group.name} v{self._feature_group.version}"
             )
-            fg_commit = self._write_delta_rs_dataset(dataset)
+            delta_write_options = {}
+            if write_options is not None:
+                for key, value in write_options.items():
+                    if all(
+                        [
+                            isinstance(value, str),
+                            isinstance(key, str),
+                            key.startswith("delta."),
+                        ]
+                    ):
+                        # delta-rs write options do not have the "delta." prefix
+                        delta_write_options[key[6:]] = value
+            fg_commit = self._write_delta_rs_dataset(
+                dataset, write_options=delta_write_options
+            )
         fg_commit.validation_id = validation_id
         return self._feature_group_api.commit(self._feature_group, fg_commit)
 
-    def register_temporary_table(self, delta_fg_alias, read_options):
+    def register_temporary_table(
+        self, delta_fg_alias, read_options: Optional[Dict[str, Any]] = None
+    ):
         location = self._feature_group.prepare_spark_location()
         _logger.debug(
             f"Registering temporary table for Delta feature group {self._feature_group.name} v{self._feature_group.version} at location {location}"
@@ -174,7 +196,9 @@ class DeltaEngine:
             fg_commit = self._get_last_commit_metadata(self._spark_session, location)
         return self._feature_group_api.commit(self._feature_group, fg_commit)
 
-    def _write_delta_dataset(self, dataset, write_options):
+    def _write_delta_dataset(
+        self, dataset, write_options: Optional[Dict[str, Any]] = None
+    ):
         try:
             from delta.tables import DeltaTable
         except ImportError as e:
@@ -268,7 +292,9 @@ class DeltaEngine:
             _logger.debug(f"Internal client, using delta-rs location: {location}")
             return location
 
-    def _write_delta_rs_dataset(self, dataset):
+    def _write_delta_rs_dataset(
+        self, dataset, write_options: Optional[Dict[str, Any]] = None
+    ):
         try:
             from deltalake import DeltaTable as DeltaRsTable
             from deltalake import write_deltalake as deltars_write
@@ -282,6 +308,7 @@ class DeltaEngine:
         is_polars_df = False
         if HAS_POLARS:
             import polars as pl
+
             if isinstance(dataset, pl.DataFrame):
                 is_polars_df = True
                 _logger.debug("Converting DataFrame to Arrow Table for Delta write")
@@ -498,11 +525,27 @@ class DeltaEngine:
 
         # Depending on operation, set the relevant metrics
         if operation == "WRITE":
-            rows_inserted = operation_metrics.get("numOutputRows") or operation_metrics.get("num_added_rows") or 0
+            rows_inserted = (
+                operation_metrics.get("numOutputRows")
+                or operation_metrics.get("num_added_rows")
+                or 0
+            )
         elif operation == "MERGE":
-            rows_inserted = operation_metrics.get("numTargetRowsInserted") or operation_metrics.get("num_target_rows_inserted") or 0
-            rows_updated = operation_metrics.get("numTargetRowsUpdated") or operation_metrics.get("num_target_rows_updated") or 0
-            rows_deleted = operation_metrics.get("numTargetRowsDeleted") or operation_metrics.get("num_target_rows_deleted") or 0
+            rows_inserted = (
+                operation_metrics.get("numTargetRowsInserted")
+                or operation_metrics.get("num_target_rows_inserted")
+                or 0
+            )
+            rows_updated = (
+                operation_metrics.get("numTargetRowsUpdated")
+                or operation_metrics.get("num_target_rows_updated")
+                or 0
+            )
+            rows_deleted = (
+                operation_metrics.get("numTargetRowsDeleted")
+                or operation_metrics.get("num_target_rows_deleted")
+                or 0
+            )
 
         _logger.debug(
             f"Commit metrics {commit_timestamp} - inserted: {rows_inserted}, updated: {rows_updated}, deleted: {rows_deleted}"

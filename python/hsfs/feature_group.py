@@ -3348,6 +3348,9 @@ class FeatureGroup(FeatureGroupBase):
                 [hsfs.core.job_configuration.JobConfiguration](../jobs/#jobconfiguration)
                   to configure the Hopsworks Job used to write data into the
                   feature group.
+                * key `delta.*` to pass Delta Lake specific write options, e.g
+                  `{"delta.enableChangeDataFeed": "true"}`. Note that these options only take
+                  strings as values.
                 * key `wait_for_job` and value `True` or `False` to configure
                   whether or not to the insert call should return only
                   after the Hopsworks Job has finished. By default it waits.
