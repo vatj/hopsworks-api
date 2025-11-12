@@ -3280,6 +3280,8 @@ class FeatureGroup(FeatureGroupBase):
         group.
         If feature group's time travel format is `HUDI` then `operation` argument can be
         either `insert` or `upsert`.
+        For feature groups with time travel format `DELTA`, `delta.enableChangeDataFeed` option can be set in write_options. If
+        not set, it defaults to `true` for new feature groups.
 
         If feature group doesn't exist the insert method will create the necessary metadata the first time it is
         invoked and writes the specified `features` dataframe as feature group to the online/offline feature store.
@@ -3410,6 +3412,14 @@ class FeatureGroup(FeatureGroupBase):
             write_options["wait_for_online_ingestion"] = wait
         if not self._id and self._offline_backfill_every_hr is not None:
             write_options["offline_backfill_every_hr"] = self._offline_backfill_every_hr
+        if all(
+            [
+                not self._id,
+                self.time_travel_format == "DELTA",
+                write_options.get("delta.enableChangeDataFeed") != "false",
+            ]
+        ):
+            write_options["delta.enableChangeDataFeed"] = "true"
 
         job, ge_report = self._feature_group_engine.insert(
             self,
