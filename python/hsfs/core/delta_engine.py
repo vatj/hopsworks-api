@@ -69,7 +69,7 @@ class DeltaEngine:
     def save_delta_fg(
         self,
         dataset,
-        write_options: Optional[Dict[str, Any]] = None,
+        write_options: Optional[Dict[str, str]] = None,
         validation_id=None,
     ):
         if self._spark_session is not None:
@@ -107,12 +107,19 @@ class DeltaEngine:
             f"Registering temporary table for Delta feature group {self._feature_group.name} v{self._feature_group.version} at location {location}"
         )
 
-        delta_options = self._setup_delta_read_opts(delta_fg_alias, read_options)
+        delta_options = self._setup_delta_read_opts(
+            delta_fg_alias, location=location, read_options=read_options
+        )
         self._spark_session.read.format(self.DELTA_SPARK_FORMAT).options(
             **delta_options
         ).load(location).createOrReplaceTempView(delta_fg_alias.alias)
 
-    def _setup_delta_read_opts(self, delta_fg_alias, read_options):
+    def _setup_delta_read_opts(
+        self,
+        delta_fg_alias,
+        location: str,
+        read_options: Optional[Dict[str, str]] = None,
+    ):
         delta_options = {}
         if delta_fg_alias.left_feature_group_end_timestamp is None and (
             delta_fg_alias.left_feature_group_start_timestamp is None
@@ -131,8 +138,27 @@ class DeltaEngine:
             delta_options = {
                 self.DELTA_QUERY_TIME_TRAVEL_AS_OF_INSTANT: _delta_commit_end_time,
             }
+        elif delta_fg_alias.left_feature_group_start_timestamp is not None:
+            # change data feed query with start and end time
+            _delta_commit_start_time = util.get_delta_datestr_from_timestamp(
+                delta_fg_alias.left_feature_group_start_timestamp
+            )
+            _delta_commit_end_time = util.get_delta_datestr_from_timestamp(
+                delta_fg_alias.left_feature_group_end_timestamp
+            )
+            delta_options = {
+                "readChangeFeed": "true",
+                "startingTimestamp": _delta_commit_start_time,
+            }
+            if delta_fg_alias.left_feature_group_end_timestamp is not None:
+                delta_options["endingTimestamp"] = _delta_commit_end_time
 
         if read_options:
+            for key in read_options.keys():
+                if isinstance(key, str) and key.startswith("delta."):
+                    # delta read options do not have the "delta." prefix
+                    delta_options[key[6:]] = read_options.pop(key)
+            # Update with any remaining read options, e.g auth options for S3
             delta_options.update(read_options)
 
         _logger.debug(
@@ -293,7 +319,7 @@ class DeltaEngine:
             return location
 
     def _write_delta_rs_dataset(
-        self, dataset, write_options: Optional[Dict[str, Any]] = None
+        self, dataset, write_options: Optional[Dict[str, str]] = None
     ):
         try:
             from deltalake import DeltaTable as DeltaRsTable
@@ -331,7 +357,10 @@ class DeltaEngine:
 
         if not is_delta_table:
             deltars_write(
-                location, dataset, partition_by=self._feature_group.partition_key
+                location,
+                dataset,
+                configuration=write_options or {},
+                partition_by=self._feature_group.partition_key,
             )
         else:
             source_alias = (
@@ -348,6 +377,7 @@ class DeltaEngine:
                     predicate=merge_query_str,
                     source_alias=updates_alias,
                     target_alias=source_alias,
+                    configuration=write_options or {},
                 )
                 .when_matched_update_all()
                 .when_not_matched_insert_all()
