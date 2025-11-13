@@ -139,5 +139,9 @@ class FsQuery:
     ) -> None:
         for hudi_fg in self._delta_cached_feature_groups:
             engine.get_instance().register_delta_temporary_table(
-                hudi_fg, feature_store_id, feature_store_name, read_options
+                hudi_fg,
+                feature_store_id,
+                feature_store_name,
+                read_options,
+                is_cdc_query=is_cdc_query,
             )

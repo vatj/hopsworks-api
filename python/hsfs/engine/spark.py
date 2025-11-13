@@ -237,7 +237,7 @@ class Engine:
         delta_fg_alias,
         feature_store_id: int,
         feature_store_name: str,
-        read_options: Dict[str, Any],
+        read_options: Optional[Dict[str, Any]],
         is_cdc_query: bool = False,
     ):
         delta_engine_instance = delta_engine.DeltaEngine(
