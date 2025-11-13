@@ -598,7 +598,12 @@ class Engine:
         pass
 
     def register_delta_temporary_table(
-        self, delta_fg_alias, feature_store_id, feature_store_name, read_options
+        self,
+        delta_fg_alias,
+        feature_store_id,
+        feature_store_name,
+        read_options,
+        is_cdc_query=False,
     ):
         # No op to avoid query failure
         pass

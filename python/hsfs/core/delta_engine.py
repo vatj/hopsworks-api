@@ -100,7 +100,10 @@ class DeltaEngine:
         return self._feature_group_api.commit(self._feature_group, fg_commit)
 
     def register_temporary_table(
-        self, delta_fg_alias, read_options: Optional[Dict[str, Any]] = None
+        self,
+        delta_fg_alias,
+        read_options: Optional[Dict[str, Any]] = None,
+        is_cdc_query: bool = False,
     ):
         location = self._feature_group.prepare_spark_location()
         _logger.debug(
@@ -108,16 +111,25 @@ class DeltaEngine:
         )
 
         delta_options = self._setup_delta_read_opts(
-            delta_fg_alias, location=location, read_options=read_options
+            delta_fg_alias, read_options=read_options
         )
-        self._spark_session.read.format(self.DELTA_SPARK_FORMAT).options(
-            **delta_options
-        ).load(location).createOrReplaceTempView(delta_fg_alias.alias)
+        if not is_cdc_query:
+            self._spark_session.read.format(self.DELTA_SPARK_FORMAT).options(
+                **delta_options
+            ).load(location).createOrReplaceTempView(delta_fg_alias.alias)
+        else:
+            from pyspark.sql.functions import col
+
+            # CDC query - remove duplicates for upserts and do not include deleted rows
+            self._spark_session.read.format(self.DELTA_SPARK_FORMAT).options(
+                **delta_options
+            ).load(location).filter(
+                col("_change_type").isin("update_postimage", "insert")
+            ).createOrReplaceTempView(delta_fg_alias.alias)
 
     def _setup_delta_read_opts(
         self,
         delta_fg_alias,
-        location: str,
         read_options: Optional[Dict[str, str]] = None,
     ):
         delta_options = {}
