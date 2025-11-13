@@ -81,20 +81,8 @@ class DeltaEngine:
             _logger.debug(
                 f"Saving Delta dataset using delta-rs to feature group {self._feature_group.name} v{self._feature_group.version}"
             )
-            delta_write_options = {}
-            if write_options is not None:
-                for key, value in write_options.items():
-                    if all(
-                        [
-                            isinstance(value, str),
-                            isinstance(key, str),
-                            key.startswith("delta."),
-                        ]
-                    ):
-                        # delta-rs write options do not have the "delta." prefix
-                        delta_write_options[key[6:]] = value
             fg_commit = self._write_delta_rs_dataset(
-                dataset, write_options=delta_write_options
+                dataset, write_options=write_options
             )
         fg_commit.validation_id = validation_id
         return self._feature_group_api.commit(self._feature_group, fg_commit)
@@ -353,13 +341,19 @@ class DeltaEngine:
         if not is_polars_df:
             dataset = self._prepare_df_for_delta(dataset)
 
-        fg_source_table = self._get_delta_rs_table()
+        configuration = {}
+        # Other values in write_options like auth credentials should be passed to storage_options
+        for key, value in (write_options or {}).items():
+            if all([isinstance(key, str), key.startswith("delta.")]):
+                configuration[key] = value
+
+        fg_source_table = self._get_delta_rs_table(_write_options=write_options)
 
         if not fg_source_table:
             deltars_write(
                 location,
                 dataset,
-                configuration=write_options or {},
+                configuration=configuration,
                 partition_by=self._feature_group.partition_key,
             )
         else:
@@ -377,7 +371,7 @@ class DeltaEngine:
                     predicate=merge_query_str,
                     source_alias=updates_alias,
                     target_alias=source_alias,
-                    configuration=write_options or {},
+                    configuration=configuration,
                 )
                 .when_matched_update_all()
                 .when_not_matched_insert_all()
@@ -388,7 +382,7 @@ class DeltaEngine:
         )
         return self._get_last_commit_metadata(self._spark_session, location)
 
-    def _get_delta_rs_table(self):
+    def _get_delta_rs_table(self, _write_options: Optional[Dict[str, str]] = None):
         try:
             from deltalake import DeltaTable as DeltaRsTable
             from deltalake.exceptions import TableNotFoundError
