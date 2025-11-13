@@ -169,9 +169,9 @@ class DeltaEngine:
             for key in read_options.keys():
                 if isinstance(key, str) and key.startswith("delta."):
                     # delta read options do not have the "delta." prefix
-                    delta_options[key[6:]] = read_options.pop(key)
-            # Update with any remaining read options, e.g auth options for S3
-            delta_options.update(read_options)
+                    delta_options[key[6:]] = read_options[key]
+                else:
+                    delta_options[key] = read_options[key]
 
         _logger.debug(
             f"Delta read options for feature group {self._feature_group.name} v{self._feature_group.version}: {delta_options}"
@@ -334,9 +334,7 @@ class DeltaEngine:
         self, dataset, write_options: Optional[Dict[str, str]] = None
     ):
         try:
-            from deltalake import DeltaTable as DeltaRsTable
             from deltalake import write_deltalake as deltars_write
-            from deltalake.exceptions import TableNotFoundError
         except ImportError as e:
             raise ImportError(
                 "Delta Lake (deltalake) and its dependencies are required for non-Spark operations. "
@@ -355,19 +353,9 @@ class DeltaEngine:
         if not is_polars_df:
             dataset = self._prepare_df_for_delta(dataset)
 
-        try:
-            fg_source_table = DeltaRsTable(location)
-            is_delta_table = True
-            _logger.debug(
-                f"Delta table found at {location}. Proceeding with merge operation."
-            )
-        except TableNotFoundError:
-            _logger.debug(
-                f"Delta table not found at {location}. A new Delta table will be created."
-            )
-            is_delta_table = False
+        fg_source_table = self._get_delta_rs_table()
 
-        if not is_delta_table:
+        if not fg_source_table:
             deltars_write(
                 location,
                 dataset,
@@ -400,10 +388,7 @@ class DeltaEngine:
         )
         return self._get_last_commit_metadata(self._spark_session, location)
 
-    def _get_delta_rs_table(
-        self,
-        location: str,
-    ):
+    def _get_delta_rs_table(self):
         try:
             from deltalake import DeltaTable as DeltaRsTable
             from deltalake.exceptions import TableNotFoundError
@@ -422,9 +407,7 @@ class DeltaEngine:
             is_delta_table = False
 
         if not is_delta_table:
-            raise FeatureStoreException(
-                f"Feature group {self._feature_group.name} is not DELTA enabled "
-            )
+            return None
         else:
             return fg_source_table
 
