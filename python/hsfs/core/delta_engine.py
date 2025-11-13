@@ -400,6 +400,34 @@ class DeltaEngine:
         )
         return self._get_last_commit_metadata(self._spark_session, location)
 
+    def _get_delta_rs_table(
+        self,
+        location: str,
+    ):
+        try:
+            from deltalake import DeltaTable as DeltaRsTable
+            from deltalake.exceptions import TableNotFoundError
+        except ImportError as e:
+            raise ImportError(
+                "Delta Lake (deltalake) and its dependencies are required for non-Spark operations. "
+                "Install 'hops-deltalake' to enable Delta RS features."
+            ) from e
+        location = self._get_delta_rs_location()
+        try:
+            fg_source_table = DeltaRsTable(location)
+            is_delta_table = True
+            _logger.debug(f"Delta table found at {location}.")
+        except TableNotFoundError:
+            _logger.debug(f"Delta table not found at {location}.")
+            is_delta_table = False
+
+        if not is_delta_table:
+            raise FeatureStoreException(
+                f"Feature group {self._feature_group.name} is not DELTA enabled "
+            )
+        else:
+            return fg_source_table
+
     @staticmethod
     def _prepare_df_for_delta(df, timestamp_precision="us"):
         try:
