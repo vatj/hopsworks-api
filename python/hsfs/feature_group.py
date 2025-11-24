@@ -283,6 +283,7 @@ class FeatureGroupBase:
         self.check_deprecated()
 
     def check_deprecated(self) -> None:
+        """Print a warning if this feature group is deprecated."""
         if self.deprecated:
             warnings.warn(
                 f"Feature Group `{self._name}`, version `{self._version}` is deprecated",
@@ -1939,10 +1940,12 @@ class FeatureGroupBase:
 
     @property
     def feature_store_id(self) -> Optional[int]:
+        """ID of the feature store to which the feature group belongs."""
         return self._feature_store_id
 
     @property
     def feature_store(self) -> feature_store_mod.FeatureStore:
+        """Feature store to which the feature group belongs."""
         if self._feature_store is None:
             self._feature_store = feature_store_api.FeatureStoreApi().get(
                 self._feature_store_id
@@ -1973,6 +1976,7 @@ class FeatureGroupBase:
         self._version = version
 
     def get_fg_name(self) -> str:
+        """Returns the full feature group name, that is, its base name combined with its version."""
         return f"{self.name}_{self.version}"
 
     @property
@@ -2190,6 +2194,7 @@ class FeatureGroupBase:
 
     @property
     def embedding_index(self) -> Optional["EmbeddingIndex"]:
+        # TODO: Add docstring
         if self._embedding_index:
             self._embedding_index.feature_group = self
         return self._embedding_index
@@ -2230,6 +2235,7 @@ class FeatureGroupBase:
 
     @property
     def location(self) -> Optional[str]:
+        # TODO: Add docstring
         return self._location
 
     @property
@@ -2293,9 +2299,11 @@ class FeatureGroupBase:
 
     @property
     def storage_connector(self) -> "sc.StorageConnector":
+        """The storage connector which was used to create the feature group, if any."""
         return self._storage_connector
 
     def prepare_spark_location(self) -> str:
+        # TODO: Add docstring
         location = self.location
         if self.storage_connector is not None:
             location = self.storage_connector.prepare_spark(location)
@@ -2330,6 +2338,7 @@ class FeatureGroupBase:
 
     @property
     def data_source(self) -> Optional[ds.DataSource]:
+        """The data source which was used to create the feature group, if any."""
         return self._data_source
 
     @data_source.setter
@@ -2568,6 +2577,7 @@ class FeatureGroupBase:
 
 @typechecked
 class FeatureGroup(FeatureGroupBase):
+    # TODO: Add docstring
     CACHED_FEATURE_GROUP = "CACHED_FEATURE_GROUP"
     STREAM_FEATURE_GROUP = "STREAM_FEATURE_GROUP"
     ENTITY_TYPE = "featuregroups"
@@ -3155,7 +3165,7 @@ class FeatureGroup(FeatureGroupBase):
                 * key `run_validation` boolean value, set to `False` to skip validation temporarily on ingestion.
                 * key `save_report` boolean value, set to `False` to skip upload of the validation report to Hopsworks.
                 * key `ge_validate_kwargs` a dictionary containing kwargs for the validate method of Great Expectations.
-                * key `online_schema_validation` boolean value, set to `True` to validate the schema for online ingestion.
+                * key `schema_validation` boolean value, set to `True` to validate the schema.
             wait: Wait for job and online ingestion to finish before returning, defaults to `False`.
                 Shortcut for write_options `{"wait_for_job": False, "wait_for_online_ingestion": False}`.
 
@@ -3378,7 +3388,7 @@ class FeatureGroup(FeatureGroupBase):
                 * key `ge_validate_kwargs` a dictionary containing kwargs for the validate method of Great Expectations.
                 * key `fetch_expectation_suite` a boolean value, by default `True`, to control whether the expectation
                    suite of the feature group should be fetched before every insert.
-                * key `online_schema_validation` boolean value, set to `True` to validate the schema for online ingestion.
+                * key `schema_validation` boolean value, set to `True` to validate the schema.
             wait: Wait for job and online ingestion to finish before returning, defaults to `False`.
                 Shortcut for write_options `{"wait_for_job": False, "wait_for_online_ingestion": False}`.
             transformation_context: `Dict[str, Any]` A dictionary mapping variable names to objects that will be provided as contextual information to the transformation function at runtime.
@@ -4134,9 +4144,9 @@ class FeatureGroup(FeatureGroupBase):
 
     def _is_time_travel_enabled(self) -> bool:
         """Whether time-travel is enabled or not"""
-        return self._time_travel_format is not None and (
-            self._time_travel_format.upper() == "HUDI"
-            or self._time_travel_format.upper() == "DELTA"
+        return (
+            self._time_travel_format is not None
+            and self._time_travel_format.upper() != "NONE"
         )
 
     @property
@@ -4305,6 +4315,8 @@ class FeatureGroup(FeatureGroupBase):
 
 @typechecked
 class ExternalFeatureGroup(FeatureGroupBase):
+    """A feature group that references data stored outside Hopsworks."""
+
     EXTERNAL_FEATURE_GROUP = "ON_DEMAND_FEATURE_GROUP"
     ENTITY_TYPE = "featuregroups"
 
@@ -4809,26 +4821,32 @@ class ExternalFeatureGroup(FeatureGroupBase):
 
     @property
     def id(self) -> Optional[int]:
+        """ID of the feature group, set by backend."""
         return self._id
 
     @property
     def description(self) -> Optional[str]:
+        """Description of the feature group, as it appears in the UI."""
         return self._description
 
     @property
     def data_format(self) -> Optional[str]:
+        # TODO: Add docstring
         return self._data_format
 
     @property
     def options(self) -> Optional[Dict[str, Any]]:
+        # TODO: Add docstring
         return self._options
 
     @property
     def creator(self) -> Optional["user.User"]:
+        """User who created the feature group."""
         return self._creator
 
     @property
     def created(self) -> Optional[str]:
+        # TODO: Add docstring
         return self._created
 
     @description.setter
@@ -4843,6 +4861,7 @@ class ExternalFeatureGroup(FeatureGroupBase):
 
 @typechecked
 class SpineGroup(FeatureGroupBase):
+    # TODO: Add docstring
     SPINE_GROUP = "ON_DEMAND_FEATURE_GROUP"
     ENTITY_TYPE = "featuregroups"
 
