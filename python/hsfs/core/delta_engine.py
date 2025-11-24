@@ -371,7 +371,6 @@ class DeltaEngine:
                     predicate=merge_query_str,
                     source_alias=updates_alias,
                     target_alias=source_alias,
-                    configuration=configuration,
                 )
                 .when_matched_update_all()
                 .when_not_matched_insert_all()
