@@ -656,7 +656,7 @@ class Engine:
         exact_uniqueness: bool = True,
     ) -> str:
         # TODO: add statistics for correlations, histograms and exact_uniqueness
-        _logger.info("Profiling dataframe in Python Engine")
+        _logger.info("Computing insert statistics")
         if HAS_POLARS and (
             isinstance(df, pl.DataFrame) or isinstance(df, pl.dataframe.frame.DataFrame)
         ):
