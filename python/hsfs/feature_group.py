@@ -3789,6 +3789,12 @@ class FeatureGroup(FeatureGroupBase):
         # Raises
             `hopsworks.client.exceptions.RestAPIError`: If the backend encounters an error when handling the request
         """
+        if self.time_travel_format == "HUDI" and not engine.get_type().startswith(
+            "spark"
+        ):
+            raise NotImplementedError(
+                "commit_delete_record is only supported for HUDI feature groups when using the Spark engine."
+            )
         self._feature_group_engine.commit_delete(self, delete_df, write_options or {})
 
     def delta_vacuum(
