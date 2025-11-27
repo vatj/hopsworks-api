@@ -109,6 +109,7 @@ class DeltaEngine:
             from pyspark.sql.functions import col
 
             # CDC query - remove duplicates for upserts and do not include deleted rows
+            # to match behavior of other engines
             self._spark_session.read.format(self.DELTA_SPARK_FORMAT).options(
                 **delta_options
             ).load(location).filter(
@@ -141,10 +142,10 @@ class DeltaEngine:
         elif delta_fg_alias.left_feature_group_start_timestamp is not None:
             # change data feed query with start and end time
             _delta_commit_start_time = util.get_delta_datestr_from_timestamp(
-                delta_fg_alias.left_feature_group_start_timestamp
+                delta_fg_alias.left_feature_group_start_timestamp,
             )
             _delta_commit_end_time = util.get_delta_datestr_from_timestamp(
-                delta_fg_alias.left_feature_group_end_timestamp
+                delta_fg_alias.left_feature_group_end_timestamp,
             )
             delta_options = {
                 "readChangeFeed": "true",
@@ -167,7 +168,7 @@ class DeltaEngine:
 
         return delta_options
 
-    def delete_record(self, delete_df):
+    def delete_record(self, delete_df, write_options: Optional[Dict[str, str]] = None):
         if self._spark_session is not None:
             try:
                 from delta.tables import DeltaTable
@@ -177,6 +178,9 @@ class DeltaEngine:
                     "Install 'delta-spark' or include it in your environment."
                 ) from e
             location = self._feature_group.prepare_spark_location()
+            _logger.debug(
+                f"Checking for Delta table at location {location} via Spark Deltalake"
+            )
             fg_source_table = DeltaTable.forPath(self._spark_session, location)
             is_delta_table = DeltaTable.isDeltaTable(self._spark_session, location)
         else:
@@ -190,6 +194,9 @@ class DeltaEngine:
                     "Install 'hops-deltalake' to enable Delta RS features."
                 ) from e
             try:
+                _logger.debug(
+                    f"Checking for Delta table at location {location} via python deltalake"
+                )
                 fg_source_table = DeltaRsTable(location)
                 is_delta_table = True
             except TableNotFoundError:
@@ -200,6 +207,34 @@ class DeltaEngine:
                 f"Feature group {self._feature_group.name} is not DELTA enabled "
             )
         else:
+            if isinstance(write_options, dict):
+                table_properties = {
+                    key: value
+                    for key, value in write_options.items()
+                    if all(
+                        [
+                            isinstance(key, str),
+                            key.startswith("delta.") or key.startswith("delta-rs."),
+                        ]
+                    )
+                }
+                if len(table_properties) == 0:
+                    _logger.debug(
+                        f"No delta table properties found in write options for feature group {self._feature_group.name} v{self._feature_group.version}"
+                    )
+                else:
+                    _logger.debug(
+                        f"Found delta table properties {table_properties} from write options for "
+                        f"feature group {self._feature_group.name} v{self._feature_group.version},"
+                        " updating table properties before delete operation."
+                    )
+                    fg_source_table.alter.set_table_properties(
+                        properties=table_properties, raise_on_error=True
+                    )
+                    _logger.debug(
+                        f"Updated delta table properties for feature group {self._feature_group.name} v{self._feature_group.version}"
+                    )
+
             source_alias = (
                 f"{self._feature_group.name}_{self._feature_group.version}_source"
             )
@@ -207,6 +242,9 @@ class DeltaEngine:
                 f"{self._feature_group.name}_{self._feature_group.version}_updates"
             )
             merge_query_str = self._generate_merge_query(source_alias, updates_alias)
+            _logger.debug(
+                f"Generated merge query for feature group {self._feature_group.name} v{self._feature_group.version}: {merge_query_str}"
+            )
 
             if self._spark_session is not None:
                 fg_source_table.alias(source_alias).merge(
@@ -219,6 +257,9 @@ class DeltaEngine:
                     source_alias=updates_alias,
                     target_alias=source_alias,
                 ).when_matched_delete().execute()
+            _logger.debug(
+                f"Executed delete operation. Retrieving commit metadata for Delta table at {location}"
+            )
             fg_commit = self._get_last_commit_metadata(self._spark_session, location)
         return self._feature_group_api.commit(self._feature_group, fg_commit)
 
@@ -344,7 +385,12 @@ class DeltaEngine:
         configuration = {}
         # Other values in write_options like auth credentials should be passed to storage_options
         for key, value in (write_options or {}).items():
-            if all([isinstance(key, str), key.startswith("delta.")]):
+            if all(
+                [
+                    isinstance(key, str),
+                    key.startswith("delta.") or key.startswith("delta-rs."),
+                ]
+            ):
                 configuration[key] = value
 
         fg_source_table = self._get_delta_rs_table(_write_options=write_options)
@@ -357,6 +403,9 @@ class DeltaEngine:
                 partition_by=self._feature_group.partition_key,
             )
         else:
+            fg_source_table.alter.set_table_properties(
+                properties=configuration, raise_on_error=True
+            )
             source_alias = (
                 f"{self._feature_group.name}_{self._feature_group.version}_source"
             )
