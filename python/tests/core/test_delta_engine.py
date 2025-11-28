@@ -18,6 +18,7 @@ import sys
 import types
 from unittest import mock
 
+import pandas as pd
 import pytest
 from hopsworks_common.client.exceptions import FeatureStoreException
 from hsfs.core.delta_engine import DeltaEngine
@@ -409,6 +410,37 @@ class TestDeltaEngine:
             engine.delete_record(delete_df=mock.Mock())
         assert "delta-spark" in str(e.value)
 
+    def test_save_empty_table_uses_pyspark_path(self, mocker):
+        # Arrange
+        _patch_client(mocker, is_external=False)
+        spark = mock.Mock()
+        fg = _make_fg("hopsfs://nn:8020/p")
+        engine = DeltaEngine(1, "fs", fg, spark, mock.Mock())
+        pyspark_mock = mocker.patch.object(engine, "save_empty_delta_table_pyspark")
+        python_mock = mocker.patch.object(engine, "save_empty_delta_table_python")
+
+        # Act
+        engine.save_empty_table()
+
+        # Assert
+        pyspark_mock.assert_called_once_with()
+        python_mock.assert_not_called()
+
+    def test_save_empty_table_uses_python_path(self, mocker):
+        # Arrange
+        _patch_client(mocker, is_external=False)
+        fg = _make_fg("hopsfs://nn:8020/p")
+        engine = DeltaEngine(1, "fs", fg, None, None)
+        pyspark_mock = mocker.patch.object(engine, "save_empty_delta_table_pyspark")
+        python_mock = mocker.patch.object(engine, "save_empty_delta_table_python")
+
+        # Act
+        engine.save_empty_table()
+
+        # Assert
+        python_mock.assert_called_once_with()
+        pyspark_mock.assert_not_called()
+
     def test_delete_record_importerror_rs_deltalake_missing(self, mocker, monkeypatch):
         # Arrange
         _patch_client(mocker, is_external=False)
@@ -469,6 +501,36 @@ class TestDeltaEngine:
         # Act & Assert
         with pytest.raises(ImportError):
             DeltaEngine._prepare_df_for_delta(df=mock.Mock())
+
+    @pytest.mark.parametrize("input_precision", ["s", "ms", "us", "ns"])
+    @pytest.mark.parametrize("target_precision", ["s", "ms", "us", "ns"])
+    def test_prepare_df_for_delta_all_precisions(self, input_precision, target_precision):
+        # Arrange
+        import pyarrow as pa
+        ts_values = pd.to_datetime([
+            "2025-01-01 00:00:00.123456789",
+            "2025-01-02 00:00:00.987654321",
+            "2025-01-03 00:00:00.555555555",
+        ])
+        ts_values = ts_values.astype(f"datetime64[{input_precision}]")
+
+        df = pd.DataFrame({
+            "ts": ts_values,
+            "val": [1.0, 2.5, 3.5],
+            "name": ["a", "b", "c"]
+        })
+
+        # Act
+        table = DeltaEngine._prepare_df_for_delta(df, timestamp_precision=target_precision)
+
+        # Assert
+        assert isinstance(table, pa.Table)
+        # Timestamp column should be cast to target precision
+        for field in table.schema:
+            if pa.types.is_timestamp(field.type):
+                assert field.type.unit == target_precision
+        # Other columns should remain unchanged
+        assert len(table.columns) == df.shape[1]
 
     def test_vacuum_executes_sql(self, mocker):
         # Arrange
