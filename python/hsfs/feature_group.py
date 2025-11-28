@@ -3368,9 +3368,11 @@ class FeatureGroup(FeatureGroupBase):
                 [hsfs.core.job_configuration.JobConfiguration](../jobs/#jobconfiguration)
                   to configure the Hopsworks Job used to write data into the
                   feature group.
-                * key `delta.*` to pass Delta Lake specific write options, e.g
+                * key `delta.*` to pass deltalake (delta-rs) specific table properties, e.g
                   `{"delta.enableChangeDataFeed": "true"}`. Note that these options only take
                   strings as values.
+                * key `delta.storage.*` used by the python engine to pass storage_options to
+                  deltalake.
                 * key `wait_for_job` and value `True` or `False` to configure
                   whether or not to the insert call should return only
                   after the Hopsworks Job has finished. By default it waits.
@@ -4525,9 +4527,6 @@ class ExternalFeatureGroup(FeatureGroupBase):
             write_options: Additional write options as key-value pairs, defaults to `{}`.
                 When using the `python` engine, write_options can contain the
                 following entries:
-                * key `wait_for_job` and value `True` or `False` to configure
-                  whether or not to the insert call should return only
-                  after the Hopsworks Job has finished. By default it waits.
                 * key `wait_for_online_ingestion` and value `True` or `False` to configure
                   whether or not to the save call should return only
                   after the Hopsworks online ingestion has finished. By default it does not wait.
@@ -4544,8 +4543,8 @@ class ExternalFeatureGroup(FeatureGroupBase):
                 * key `ge_validate_kwargs` a dictionary containing kwargs for the validate method of Great Expectations.
                 * key `fetch_expectation_suite` a boolean value, by default `True`, to control whether the expectation
                    suite of the feature group should be fetched before every insert.
-            wait: Wait for job and online ingestion to finish before returning, defaults to `False`.
-                Shortcut for write_options `{"wait_for_job": False, "wait_for_online_ingestion": False}`.
+            wait: Wait for online ingestion to finish before returning, defaults to `False`.
+                Shortcut for write_options `{"wait_for_online_ingestion": False}`.
 
         # Returns
             Tuple(None, `ge.core.ExpectationSuiteValidationResult`) The validation report if validation is enabled.

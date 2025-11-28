@@ -77,7 +77,7 @@ class DeltaEngine:
 
     def save_delta_fg(
         self,
-        dataset: Union[pd.DataFrame, "pa.Table", pl.DataFrame],
+        dataset: Union[pd.DataFrame, pa.Table, pl.DataFrame],
         write_options: Optional[Dict[str, str]] = None,
         validation_id: Optional[int] = None,
     ) -> feature_group_commit.FeatureGroupCommit:
