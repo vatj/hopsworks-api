@@ -137,9 +137,9 @@ class FsQuery:
         read_options: Optional[Dict[str, Any]],
         is_cdc_query: bool = False,
     ) -> None:
-        for hudi_fg in self._delta_cached_feature_groups:
+        for delta_fg in self._delta_cached_feature_groups:
             engine.get_instance().register_delta_temporary_table(
-                hudi_fg,
+                delta_fg,
                 feature_store_id,
                 feature_store_name,
                 read_options,

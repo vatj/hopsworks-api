@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import warnings
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 from urllib.parse import urlparse
 
 from hopsworks.core import project_api
@@ -28,6 +28,14 @@ from hopsworks_common.core.constants import HAS_POLARS
 from hopsworks_common.core.type_systems import convert_offline_type_to_pyarrow_type
 from hsfs import feature_group_commit, util
 from hsfs.core import feature_group_api, variable_api
+from python.hsfs.constructor import hudi_feature_group_alias
+
+
+if TYPE_CHECKING:
+    import pandas as pd
+    import polars as pl
+    import pyarrow as pa
+    from deltalake import DeltaTable as DeltaRsTable
 
 
 # Note: Avoid importing optional Delta dependencies at module import time.
@@ -69,10 +77,10 @@ class DeltaEngine:
 
     def save_delta_fg(
         self,
-        dataset,
+        dataset: Union[pd.DataFrame, "pa.Table", pl.DataFrame],
         write_options: Optional[Dict[str, str]] = None,
-        validation_id=None,
-    ):
+        validation_id: Optional[int] = None,
+    ) -> feature_group_commit.FeatureGroupCommit:
         if self._spark_session is not None:
             _logger.debug(
                 f"Saving Delta dataset using spark to feature group {self._feature_group.name} v{self._feature_group.version}"
@@ -90,7 +98,7 @@ class DeltaEngine:
 
     def register_temporary_table(
         self,
-        delta_fg_alias,
+        delta_fg_alias: hudi_feature_group_alias.HudiFeatureGroupAlias,
         read_options: Optional[Dict[str, Any]] = None,
         is_cdc_query: bool = False,
     ):
@@ -216,9 +224,14 @@ class DeltaEngine:
                         [
                             isinstance(key, str),
                             key.startswith("delta.") or key.startswith("delta-rs."),
+                            not key.startswith("delta.storage."),
+                            key != "delta.raise_if_not_exists",
                         ]
                     )
                 }
+                raise_if_not_exists = write_options.get(
+                    "delta.raise_if_not_exists", True
+                )
                 if len(table_properties) == 0:
                     _logger.debug(
                         f"No delta table properties found in write options for feature group {self._feature_group.name} v{self._feature_group.version}"
@@ -230,7 +243,8 @@ class DeltaEngine:
                         " updating table properties before delete operation."
                     )
                     fg_source_table.alter.set_table_properties(
-                        properties=table_properties, raise_on_error=True
+                        properties=table_properties,
+                        raise_if_not_exists=raise_if_not_exists,
                     )
                     _logger.debug(
                         f"Updated delta table properties for feature group {self._feature_group.name} v{self._feature_group.version}"
@@ -374,14 +388,15 @@ class DeltaEngine:
                 Dataset to write to the Delta table.
             write_options: `Optional[Dict[str, str]]`.
                 Additional write options for delta-rs. Table properties should be prefixed
-                with "delta." or "delta-rs.".
+                with "delta." or "delta-rs.". Storage options (e.g. for S3) should be prefixed
+                with "delta.storage.".
 
         # Returns
 
             `FeatureGroupCommit`. Metadata about the commit to the Delta table.
         """
         try:
-            from deltalake import write_deltalake as deltars_write
+            from deltalake import DeltaTable as DeltaRsTable
         except ImportError as e:
             raise ImportError(
                 "Delta Lake (deltalake) and its dependencies are required for non-Spark operations. "
@@ -400,55 +415,64 @@ class DeltaEngine:
         if not is_polars_df:
             dataset = self._prepare_df_for_delta(dataset)
 
-        configuration = {}
-        # Other values in write_options like auth credentials should be passed to storage_options
-        for key, value in (write_options or {}).items():
-            if all(
-                [
-                    isinstance(key, str),
-                    key.startswith("delta.") or key.startswith("delta-rs."),
-                ]
-            ):
-                configuration[key] = value
-
-        fg_source_table = self._get_delta_rs_table(_write_options=write_options)
-
+        fg_source_table = self._get_delta_rs_table(write_options=write_options)
+        configuration = self.extract_table_properties_from_write_options(write_options)
         if not fg_source_table:
-            deltars_write(
-                location,
-                dataset,
+            _logger.debug(
+                f"Creating new delta table for feature group {self._feature_group.name} v{self._feature_group.version} at {location}."
+            )
+            fg_source_table = DeltaRsTable.create(
+                table_uri=location,
+                schema=dataset.schema,
+                partition_cols=self._feature_group.partition_key,
                 configuration=configuration,
-                partition_by=self._feature_group.partition_key,
+                raise_if_key_not_exists=(write_options or {}).get(
+                    "delta.raise_if_not_exists", True
+                ),
+                name=f"{self._feature_group.name}_v{self._feature_group.version}",
+                description=f"Delta table for feature group {self._feature_group.name} v{self._feature_group.version} with ID: {self._feature_group.id}",
+                mode="error",
             )
-        else:
+        elif configuration and len(configuration) > 0:
+            # If table exists, update properties
+            _logger.debug(
+                f"Updating table properties before write operations "
+                f"feature group {self._feature_group.name} v{self._feature_group.version}."
+            )
             fg_source_table.alter.set_table_properties(
-                properties=configuration, raise_on_error=True
+                properties=configuration,
+                raise_if_not_exists=(write_options or {}).get(
+                    "delta.raise_if_not_exists", True
+                ),
             )
-            source_alias = (
-                f"{self._feature_group.name}_{self._feature_group.version}_source"
-            )
-            updates_alias = (
-                f"{self._feature_group.name}_{self._feature_group.version}_updates"
-            )
-            merge_query_str = self._generate_merge_query(source_alias, updates_alias)
 
-            (
-                fg_source_table.merge(
-                    source=dataset,
-                    predicate=merge_query_str,
-                    source_alias=updates_alias,
-                    target_alias=source_alias,
-                )
-                .when_matched_update_all()
-                .when_not_matched_insert_all()
-                .execute()
+        source_alias = (
+            f"{self._feature_group.name}_{self._feature_group.version}_source"
+        )
+        updates_alias = (
+            f"{self._feature_group.name}_{self._feature_group.version}_updates"
+        )
+        merge_query_str = self._generate_merge_query(source_alias, updates_alias)
+
+        (
+            fg_source_table.merge(
+                source=dataset,
+                predicate=merge_query_str,
+                source_alias=updates_alias,
+                target_alias=source_alias,
             )
+            .when_matched_update_all()
+            .when_not_matched_insert_all()
+            .execute()
+        )
         _logger.debug(
             f"Executed delta-rs write. Retrieving commit metadata for Delta table at {location}"
         )
         return self._get_last_commit_metadata(self._spark_session, location)
 
-    def _get_delta_rs_table(self, _write_options: Optional[Dict[str, str]] = None):
+    def _get_delta_rs_table(
+        self, write_options: Optional[Dict[str, str]] = None
+    ) -> Optional[DeltaRsTable]:
         try:
             from deltalake import DeltaTable as DeltaRsTable
             from deltalake.exceptions import TableNotFoundError
@@ -470,6 +494,52 @@ class DeltaEngine:
             return None
         else:
             return fg_source_table
+
+    def extract_storage_options_from_write_options(
+        self, write_options: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        _logger.debug("Inferring delta storage options from write options")
+        storage_options = {}
+        if isinstance(write_options, dict):
+            for key, value in write_options.items():
+                if all(
+                    [
+                        isinstance(key, str),
+                        key.startswith("delta.storage."),
+                    ]
+                ):
+                    storage_options[key[14:]] = value
+        if len(storage_options) == 0:
+            _logger.debug("No delta storage options found in write options")
+        else:
+            _logger.debug(
+                f"Found delta storage options {storage_options} in write options"
+            )
+        return storage_options
+
+    def extract_table_properties_from_write_options(
+        self, write_options: Optional[Dict[str, str]] = None
+    ) -> Dict[str, str]:
+        _logger.debug("Inferring delta table properties from write options")
+        table_properties = {}
+        if isinstance(write_options, dict):
+            for key, value in write_options.items():
+                if all(
+                    [
+                        isinstance(key, str),
+                        key.startswith("delta.") or key.startswith("delta-rs."),
+                        not key.startswith("delta.storage."),
+                        key != "delta.raise_if_not_exists",
+                    ]
+                ):
+                    table_properties[key] = value
+        if len(table_properties) == 0:
+            _logger.debug("No delta table properties found in write options")
+        else:
+            _logger.debug(
+                f"Found delta table properties {table_properties} in write options"
+            )
+        return table_properties
 
     @staticmethod
     def _prepare_df_for_delta(df, timestamp_precision="us"):
